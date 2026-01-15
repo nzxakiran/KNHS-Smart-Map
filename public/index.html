@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>KNHS DRRM Alert System</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --school-blue: #003366;
+            --danger-red: #dc3545;
+            --safe-green: #28a745;
+            --light-bg: #f0f2f5;
+            --white: #ffffff;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--light-bg);
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* --- HEADER --- */
+        header {
+            background-color: var(--school-blue);
+            color: var(--white);
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 1001;
+        }
+        .logo-area { font-size: 24px; margin-right: 15px; }
+        .school-info h1 { margin: 0; font-size: 16px; font-weight: 700; }
+        .school-info p { margin: 0; font-size: 12px; opacity: 0.9; }
+
+        /* --- DASHBOARD --- */
+        #main-container {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .status-card {
+            background: var(--white);
+            border-radius: 12px;
+            padding: 25px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+
+        .safe-state { border-top: 5px solid var(--safe-green); }
+        .safe-state .status-icon { color: var(--safe-green); font-size: 50px; }
+        
+        .danger-state { 
+            border-top: 5px solid var(--danger-red); 
+            display: none; 
+            animation: shake 0.5s;
+        }
+        .danger-state .status-icon { color: var(--danger-red); font-size: 50px; animation: pulse-red 1s infinite; }
+        .danger-state h2 { color: var(--danger-red); text-transform: uppercase; font-weight: 800; margin: 10px 0; }
+
+        /* --- EMERGENCY INTERFACE --- */
+        #emergency-interface {
+            display: none;
+            height: 100%;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        #visual-guide-card {
+            background: var(--white);
+            padding: 10px;
+            border-radius: 12px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        #guide-img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+
+        #map-container {
+            flex: 1;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 2px solid #fff;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            position: relative;
+            min-height: 250px;
+        }
+        #map { width: 100%; height: 100%; }
+
+        /* Distance Badge on Map */
+        .distance-badge {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+            font-size: 14px;
+            color: var(--school-blue);
+        }
+
+        /* --- ACTIVATE BUTTON --- */
+        #setup-overlay {
+            position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+            z-index: 2000;
+        }
+        .btn-activate {
+            background-color: var(--school-blue);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 30px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0,51,102,0.3);
+            cursor: pointer;
+            display: flex; align-items: center; gap: 10px;
+        }
+
+        footer { text-align: center; padding: 10px; font-size: 11px; color: #888; background: #fff; }
+
+        @keyframes pulse-red { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        @keyframes shake { 0% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } 100% { transform: translateX(0); } }
+        
+        /* Custom Marker Styles */
+        .dest-marker { text-align: center; color: white; text-shadow: 0 0 3px black; font-weight: bold; font-size: 12px; }
+
+        /* --- LOGIN MODAL --- */
+        #login-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 51, 102, 0.95); /* School Blue opacity */
+            z-index: 3000;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+        }
+        .login-box {
+            background: white; padding: 30px; border-radius: 15px; width: 80%; max-width: 350px;
+            text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }
+        .login-input {
+            width: 100%; padding: 12px; margin: 15px 0; border: 2px solid #ddd;
+            border-radius: 8px; font-family: 'Poppins'; font-size: 16px; box-sizing: border-box;
+        }
+        .btn-login {
+            background: var(--school-blue); color: white; width: 100%; padding: 12px;
+            border: none; border-radius: 8px; font-weight: bold; cursor: pointer;
+        }
+
+        /* --- SAFETY PANEL (Mark Safe & Notes) --- */
+        .safety-panel {
+            background: white; border-radius: 12px; padding: 20px; margin-top: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-left: 5px solid #ffc107; /* Warning Yellow initially */
+        }
+        .btn-mark-safe {
+            background: var(--safe-green); color: white; border: none; width: 100%;
+            padding: 15px; border-radius: 8px; font-size: 18px; font-weight: bold;
+            cursor: pointer; transition: transform 0.2s; display: flex; justify-content: center; gap: 10px;
+        }
+        .btn-mark-safe:active { transform: scale(0.98); }
+        .btn-mark-safe.safe-active { background: #ccc; cursor: not-allowed; }
+
+        .note-area {
+            width: 100%; height: 60px; border: 1px solid #ddd; border-radius: 8px;
+            padding: 10px; margin-top: 15px; font-family: 'Poppins'; box-sizing: border-box;
+        }
+        .btn-send-note {
+            background: var(--school-blue); color: white; border: none; padding: 8px 20px;
+            border-radius: 20px; font-size: 12px; margin-top: 10px; float: right; cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+        <div id="login-modal">
+        <div class="login-box">
+            <i class="fas fa-user-graduate" style="font-size: 40px; color: var(--school-blue); margin-bottom: 10px;"></i>
+            <h2>Student Check-In</h2>
+            <p style="font-size: 12px; color: #666; margin-bottom: 20px;">Enter your Student ID to connect to the DRRM Network.</p>
+            <input type="text" id="student-id-input" class="login-input" placeholder="LRN / Student ID">
+            <button class="btn-login" onclick="loginUser()">ENTER SYSTEM</button>
+        </div>
+    </div>
+    <header>
+        <div class="logo-area"><i class="fas fa-graduation-cap"></i></div>
+        <div class="school-info">
+            <h1>KABACAN NATIONAL HIGH SCHOOL</h1>
+            <p>DRRM Safety & Alert Network</p>
+        </div>
+    </header>
+
+    <div id="main-container">
+        
+        <div id="safe-card" class="status-card safe-state">
+            <div class="status-icon"><i class="fas fa-shield-alt"></i></div>
+            <h2>SYSTEM ACTIVE</h2>
+            <p>Status: <strong>Normal</strong></p>
+            <p style="font-size: 12px; color: #666;">Monitoring network...</p>
+        </div>
+
+            <div class="safety-panel">
+            <h3 style="margin-top: 0; font-size: 14px; color: #555;">MY STATUS</h3>
+            
+            <button id="btn-safe" class="btn-mark-safe" onclick="markAsSafe()">
+                <i class="fas fa-check-circle"></i> I AM SAFE
+            </button>
+
+            <div style="margin-top: 15px;">
+                <label style="font-size: 12px; font-weight: 600;">Report to Admin:</label>
+                <textarea id="student-note" class="note-area" placeholder="E.g., Injured leg, stuck in Room 102..."></textarea>
+                <button class="btn-send-note" onclick="sendNote()">SEND UPDATE</button>
+                <div style="clear: both;"></div>
+            </div>
+        </div>
+
+        <div id="danger-card" class="status-card danger-state">
+            <div class="status-icon"><i class="fas fa-exclamation-triangle"></i></div>
+            <h2 id="alert-type-text">EMERGENCY</h2>
+            <p id="alert-message-text">Proceed to evacuation areas.</p>
+        </div>
+
+        <div id="emergency-interface">
+            <div id="visual-guide-card">
+                <div style="font-weight: 600; font-size: 12px; margin-bottom: 5px; color: var(--school-blue);">
+                    <i class="fas fa-eye"></i> DESTINATION VIEW
+                </div>
+                <img id="guide-img" src="" alt="Guide" onerror="this.src='https://placehold.co/600x400?text=No+Image+Available'">
+            </div>
+
+            <div id="map-container">
+                <div id="map"></div>
+                <div id="dist-display" class="distance-badge" style="display:none;">0m to Safety</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="setup-overlay">
+        <button id="setup-btn" class="btn-activate" onclick="activateSystem()">
+            <i class="fas fa-satellite-dish"></i> CONNECT TO NETWORK
+        </button>
+    </div>
+
+    <footer>&copy; 2026 KNHS ICT Department</footer>
+    <audio id="siren" loop src="https://www.soundjay.com/mechanical/sounds/smoke-detector-1.mp3"></audio>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        const socket = io();
+        const safeCard = document.getElementById('safe-card');
+        const dangerCard = document.getElementById('danger-card');
+        const emergencyInterface = document.getElementById('emergency-interface');
+        const alertTitle = document.getElementById('alert-type-text');
+        const alertMsg = document.getElementById('alert-message-text');
+        const guideImg = document.getElementById('guide-img');
+        const setupBtn = document.getElementById('setup-btn');
+        const siren = document.getElementById('siren');
+        const distDisplay = document.getElementById('dist-display');
+
+        let map, userMarker, destMarker, routeLine;
+        let isSystemActive = false;
+
+        // --- REAL COORDINATES ---
+        const LOCATIONS = {
+            // Open Space (Earthquake/Fire)
+            OPEN_SPACE: [7.100595643301358, 124.82393316416237],
+            // Covered Court 1 (Flood)
+            COURT_1:    [7.100166532874036, 124.82429162308269],
+            // Oval (Alternative Fire)
+            OVAL:       [7.100203, 124.824066] 
+        };
+        
+        const IMAGES = {
+            OPEN_SPACE: "open_space.jpg",
+            COURT_1:    "court_1.jpg",
+            OVAL:       "oval_guide.jpg"
+        };
+
+        function activateSystem() {
+            if(isSystemActive) return;
+            siren.play().then(() => { siren.pause(); siren.currentTime = 0; }).catch(e=>{});
+            setupBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> LOCATING...';
+
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition(
+                    (pos) => {
+                        isSystemActive = true;
+                        setupBtn.style.display = 'none';
+                        updateMapLocation(pos.coords.latitude, pos.coords.longitude);
+                    },
+                    (err) => { alert("GPS Access Required"); },
+                    { enableHighAccuracy: true }
+                );
+            } else { alert("GPS not supported"); }
+        }
+
+        // --- SATELLITE MAP SETUP ---
+        function updateMapLocation(lat, lng) {
+            if(!map) {
+                map = L.map('map').setView([lat, lng], 19);
+                
+                // Esri Satellite
+                L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                    attribution: 'Tiles &copy; Esri'
+                }).addTo(map);
+                // Street Names Overlay
+                L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}').addTo(map);
+
+                // User Dot
+                const userIcon = L.divIcon({
+                    className: 'custom-div-icon',
+                    html: "<div style='background-color:#007bff; width:16px; height:16px; border-radius:50%; border:3px solid white; box-shadow:0 0 10px white; animation: pulse-blue 1.5s infinite;'></div>",
+                    iconSize: [20, 20], iconAnchor: [10, 10]
+                });
+                userMarker = L.marker([lat, lng], {icon: userIcon}).addTo(map);
+            } else {
+                userMarker.setLatLng([lat, lng]);
+                
+                // Recalculate line if alert is active and moving
+                if(dangerCard.style.display === 'block' && destMarker) {
+                    drawDirectPath(L.latLng(lat, lng), destMarker.getLatLng());
+                }
+            }
+        }
+
+                // --- LOGIN & STUDENT DATA ---
+                let studentID = localStorage.getItem('knhs_student_id');
+                const loginModal = document.getElementById('login-modal');
+
+                // Check if already logged in on load
+                if (studentID) {
+                    loginModal.style.display = 'none';
+                    socket.emit('register-student', studentID); // Tell server we are here
+                }
+
+                function loginUser() {
+                    const input = document.getElementById('student-id-input').value.trim();
+                    if (input.length > 0) {
+                        studentID = input;
+                        localStorage.setItem('knhs_student_id', studentID); // Save to phone storage
+                        loginModal.style.display = 'none';
+                        socket.emit('register-student', studentID);
+                        alert("Logged in as " + studentID);
+                    } else {
+                        alert("Please enter a valid ID");
+                    }
+                }
+
+                // --- SAFETY FEATURES ---
+                function markAsSafe() {
+                    if (!studentID) return alert("Error: ID not found. Please refresh.");
+                    
+                    const btn = document.getElementById('btn-safe');
+                    
+                    // UI Feedback
+                    btn.innerHTML = '<i class="fas fa-check-double"></i> MARKED AS SAFE';
+                    btn.classList.add('safe-active');
+                    btn.style.backgroundColor = '#28a745';
+                    
+                    // Send to Admin
+                    // We send coordinates too so Admin knows WHERE the safe student is
+                    navigator.geolocation.getCurrentPosition((pos) => {
+                        socket.emit('student-status', {
+                            id: studentID,
+                            status: 'SAFE',
+                            lat: pos.coords.latitude,
+                            lng: pos.coords.longitude
+                        });
+                    }, () => {
+                        // If GPS fails, still send status without location
+                        socket.emit('student-status', { id: studentID, status: 'SAFE', lat: null, lng: null });
+                    });
+                }
+
+                function sendNote() {
+                    const note = document.getElementById('student-note').value;
+                    if (!note) return;
+
+                    socket.emit('student-note', {
+                        id: studentID,
+                        message: note,
+                        timestamp: new Date().toLocaleTimeString()
+                    });
+
+                    // Clear input and show feedback
+                    document.getElementById('student-note').value = '';
+                    alert("Note sent to Admin Dashboard");
+                }
+
+        socket.on('receive-alert', (data) => {
+            if (data.type === 'SAFE') triggerSafeMode();
+            else triggerDangerMode(data);
+        });
+
+        function triggerSafeMode() {
+            safeCard.style.display = 'block';
+            dangerCard.style.display = 'none';
+            emergencyInterface.style.display = 'none';
+            distDisplay.style.display = 'none';
+            siren.pause(); siren.currentTime = 0;
+            
+            if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+            if (destMarker) { map.removeLayer(destMarker); destMarker = null; }
+        }
+
+        function triggerDangerMode(data) {
+            safeCard.style.display = 'none';
+            dangerCard.style.display = 'block';
+            emergencyInterface.style.display = 'flex';
+            
+            alertTitle.innerText = `${data.type} DETECTED`;
+            alertMsg.innerText = data.message;
+            siren.play().catch(e => {});
+
+            // --- SMART DESTINATION SELECTOR ---
+            let destCoords, destImage, destName;
+
+            if (data.type === 'EARTHQUAKE' || data.type === 'FIRE') {
+                destCoords = LOCATIONS.OPEN_SPACE;
+                destImage  = IMAGES.OPEN_SPACE;
+                destName   = "OPEN SPACE";
+            } else if (data.type === 'FLOOD') {
+                destCoords = LOCATIONS.COURT_1;
+                destImage  = IMAGES.COURT_1;
+                destName   = "EVACUATION CENTER";
+            } else {
+                destCoords = LOCATIONS.COURT_1;
+                destImage  = IMAGES.COURT_1;
+                destName   = "SAFE ZONE";
+            }
+
+            guideImg.src = destImage;
+
+            // --- DRAW DIRECT LINE (FAIL SAFE) ---
+            setTimeout(() => {
+                if (map) {
+                    map.invalidateSize();
+                    
+                    navigator.geolocation.getCurrentPosition(pos => {
+                        const userLatLng = L.latLng(pos.coords.latitude, pos.coords.longitude);
+                        const destLatLng = L.latLng(destCoords[0], destCoords[1]);
+
+                        // 1. Add Destination Marker
+                        if(destMarker) map.removeLayer(destMarker);
+                        const destIcon = L.divIcon({
+                            className: 'dest-marker',
+                            html: `<div style="font-size:24px; color:#28a745;"><i class="fas fa-map-marker-alt"></i></div><div style="background:rgba(0,0,0,0.5); padding:2px 5px; border-radius:4px;">${destName}</div>`,
+                            iconSize: [100, 40],
+                            iconAnchor: [50, 30]
+                        });
+                        destMarker = L.marker(destLatLng, {icon: destIcon}).addTo(map);
+
+                        // 2. Draw Line
+                        drawDirectPath(userLatLng, destLatLng);
+
+                        // 3. Zoom to Fit
+                        map.fitBounds(L.latLngBounds([userLatLng, destLatLng]), { padding: [80, 80] });
+                    });
+                }
+            }, 300);
+        }
+
+        function drawDirectPath(start, end) {
+            if(routeLine) map.removeLayer(routeLine);
+            
+            // Create a Green Dashed Line
+            routeLine = L.polyline([start, end], {
+                color: '#28a745', // Safe Green
+                weight: 6,
+                opacity: 0.9,
+                dashArray: '10, 10',
+                lineCap: 'round'
+            }).addTo(map);
+
+            // Calculate Distance
+            const dist = start.distanceTo(end).toFixed(0);
+            distDisplay.innerText = `${dist} meters to Safety`;
+            distDisplay.style.display = 'block';
+        }
+    </script>
+    
+    <style>
+        @keyframes pulse-blue {
+            0% { box-shadow: 0 0 0 0 rgba(51, 136, 255, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(51, 136, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(51, 136, 255, 0); }
+        }
+    </style>
+</body>
+</html>

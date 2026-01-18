@@ -3,431 +3,436 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KNHS Admin - Command Center</title>
+    <title>KNHS Command Pro</title>
     
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
         :root {
-            --school-blue: #003366;
-            --danger-red: #dc3545;
-            --warning-orange: #e67e22;
-            --info-blue: #3498db;
-            --safe-green: #28a745;
-            --light-bg: #f0f2f5;
-            --white: #ffffff;
-            --dark-text: #2c3e50;
+            /* PROFESSIONAL LIGHT THEME */
+            --bg-body: #f3f4f6;
+            --surface: #ffffff;
+            --border: #e5e7eb;
+            
+            --primary: #003366;       /* KNHS Blue */
+            --primary-light: #e0e7ff;
+            
+            --danger: #ef4444;        /* Red */
+            --danger-bg: #fef2f2;
+            
+            --warning: #f59e0b;       /* Orange */
+            --warning-bg: #fffbeb;
+            
+            --success: #10b981;       /* Green */
+            --success-bg: #ecfdf5;
+            
+            --info: #3b82f6;          /* Blue */
+            --info-bg: #eff6ff;
+            
+            --text-main: #111827;
+            --text-sub: #6b7280;
+            
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --radius: 16px;
         }
 
+        * { box-sizing: border-box; outline: none; }
+
         body {
-            font-family: 'Poppins', sans-serif;
-            background-color: var(--light-bg);
+            font-family: 'Manrope', sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
             margin: 0; padding: 0;
-            color: var(--dark-text);
-            display: flex; flex-direction: column; min-height: 100vh;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* --- SIDEBAR --- */
+        .sidebar {
+            width: 260px;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            display: flex; flex-direction: column;
+            padding: 24px;
+            z-index: 20;
+        }
+        .brand {
+            display: flex; align-items: center; gap: 12px;
+            font-weight: 800; font-size: 20px; color: var(--primary);
+            margin-bottom: 40px;
+        }
+        .brand-icon {
+            width: 36px; height: 36px; background: var(--primary); color: white;
+            border-radius: 8px; display: flex; align-items: center; justify-content: center;
+        }
+        
+        .nav-label { font-size: 11px; font-weight: 700; color: var(--text-sub); text-transform: uppercase; margin-bottom: 10px; letter-spacing: 0.5px; }
+        .nav-item {
+            padding: 12px 16px; border-radius: 10px; cursor: pointer;
+            font-weight: 600; color: var(--text-sub); display: flex; align-items: center; gap: 12px;
+            transition: 0.2s; margin-bottom: 4px;
+        }
+        .nav-item:hover, .nav-item.active { background: var(--primary-light); color: var(--primary); }
+        .nav-item i { width: 20px; text-align: center; }
+
+        .btn-logout {
+            margin-top: auto; color: var(--danger); background: var(--danger-bg);
+            justify-content: center;
+        }
+        .btn-logout:hover { background: #fee2e2; }
+
+        /* --- MAIN CONTENT --- */
+        .main {
+            flex: 1; display: flex; flex-direction: column;
+            overflow: hidden;
         }
 
         /* --- HEADER --- */
         header {
-            background-color: var(--school-blue);
-            color: var(--white);
-            padding: 15px 20px;
+            height: 80px; background: var(--bg-body);
             display: flex; align-items: center; justify-content: space-between;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 0 30px;
         }
-        .header-left { display: flex; align-items: center; gap: 15px; }
-        .logo-area { font-size: 24px; }
-        .school-info h1 { margin: 0; font-size: 18px; font-weight: 700; }
-        .school-info p { margin: 0; font-size: 12px; opacity: 0.8; }
+        .page-title h1 { font-size: 24px; font-weight: 800; margin: 0; letter-spacing: -0.5px; }
+        .page-title p { font-size: 13px; color: var(--text-sub); margin: 0; font-weight: 500; }
         
-        /* Header Right Side (Badge + Logout) */
-        .header-right { display: flex; align-items: center; gap: 15px; }
-        .admin-badge {
-            background: rgba(255,255,255,0.2); padding: 5px 15px; border-radius: 20px;
-            font-size: 12px; font-weight: 600; border: 1px solid rgba(255,255,255,0.4);
-            display: flex; align-items: center; gap: 5px;
+        .status-pill {
+            background: white; padding: 8px 16px; border-radius: 30px;
+            border: 1px solid var(--border); font-size: 13px; font-weight: 600;
+            display: flex; align-items: center; gap: 8px; box-shadow: var(--shadow-sm);
         }
-        .status-dot { width: 8px; height: 8px; background: #ccc; border-radius: 50%; }
-        .status-dot.online { background: #00ff00; box-shadow: 0 0 5px #00ff00; }
+        .pulse { width: 8px; height: 8px; background: var(--success); border-radius: 50%; box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); animation: pulse-green 2s infinite; }
 
-        .btn-logout {
-            color: white; text-decoration: none; font-size: 14px; 
-            background: rgba(255,255,255,0.1); padding: 8px 15px; border-radius: 6px; 
-            transition: 0.2s; display: flex; align-items: center; gap: 8px;
-        }
-        .btn-logout:hover { background: rgba(255,255,255,0.25); }
-
-        /* --- LAYOUT --- */
-        .container {
-            max-width: 1000px; margin: 30px auto; padding: 20px; width: 90%;
+        /* --- DASHBOARD GRID (Bento Layout) --- */
+        .grid-wrapper {
+            padding: 0 30px 30px 30px; flex: 1; overflow-y: auto;
+            display: grid;
+            grid-template-columns: 3fr 2fr; /* Left Main | Right Feed */
+            gap: 24px;
         }
 
-        /* --- SECTION 1: CONTROLS --- */
-        .panel-title { text-align: center; margin-bottom: 30px; color: var(--school-blue); }
-        .panel-title h2 { margin: 0; font-weight: 700; }
-        .panel-title p { margin: 5px 0 0; color: #7f8c8d; }
+        .left-col { display: flex; flex-direction: column; gap: 24px; }
+        .right-col { display: flex; flex-direction: column; gap: 24px; height: 100%; }
 
-        .control-grid {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px; margin-bottom: 40px;
+        /* --- CARDS --- */
+        .card {
+            background: var(--surface); border-radius: var(--radius);
+            box-shadow: var(--shadow-card); border: 1px solid var(--border);
+            overflow: hidden; display: flex; flex-direction: column;
         }
-        .action-card {
-            background: white; border-radius: 12px; padding: 25px; text-align: center;
-            cursor: pointer; transition: all 0.3s ease;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-bottom: 4px solid #ddd;
-        }
-        .action-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
-        .action-card:active { transform: scale(0.98); }
-
-        .card-flood { color: var(--info-blue); border-color: var(--info-blue); }
-        .card-quake { color: #8e44ad; border-color: #8e44ad; }
-        .card-fire { color: var(--warning-orange); border-color: var(--warning-orange); }
-        .card-safe { color: var(--safe-green); border-color: var(--safe-green); background: #f9fff9; }
-        .card-icon { font-size: 35px; margin-bottom: 10px; }
-        .card-title { font-weight: 700; font-size: 16px; text-transform: uppercase; }
-
-        /* Active Alert Animation */
-        .active-alert { 
-            animation: pulse-border 1.5s infinite; 
-            background-color: #ffebeb !important;
-            border-color: red !important;
-            color: red !important;
-        }
-
-        /* --- SECTION 2: LIVE DASHBOARD --- */
-        .monitor-section {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 40px;
-        }
-        @media (max-width: 768px) { .monitor-section { grid-template-columns: 1fr; } }
-
-        .monitor-card {
-            background: white; border-radius: 12px; padding: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: flex; flex-direction: column;
-            height: 350px; /* Fixed height for scrolling */
-        }
-        .monitor-header {
+        .card-header {
+            padding: 20px 24px; border-bottom: 1px solid var(--border);
             display: flex; justify-content: space-between; align-items: center;
-            border-bottom: 2px solid #f0f2f5; padding-bottom: 15px; margin-bottom: 15px;
+            background: #fafafa;
         }
-        .count-badge { background: #333; color: white; padding: 5px 12px; border-radius: 15px; font-weight: bold; font-size: 14px; }
-        .live-list { list-style: none; padding: 0; margin: 0; overflow-y: auto; flex: 1; }
-        .list-item {
-            padding: 12px; border-radius: 8px; margin-bottom: 8px; font-size: 13px;
+        .card-title { font-weight: 700; font-size: 15px; color: var(--text-main); display: flex; align-items: center; gap: 8px; }
+
+        /* --- STATS ROW --- */
+        .stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        .stat-card {
+            background: var(--surface); padding: 24px; border-radius: var(--radius);
+            border: 1px solid var(--border); box-shadow: var(--shadow-card);
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .stat-num { font-size: 36px; font-weight: 800; line-height: 1; }
+        .stat-label { font-size: 13px; font-weight: 600; color: var(--text-sub); margin-top: 4px; }
+        .stat-icon {
+            width: 48px; height: 48px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center; font-size: 20px;
+        }
+
+        /* --- ALERT ACTIONS --- */
+        .action-grid {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 24px;
+        }
+        .action-btn {
+            border: none; background: white; border: 1px solid var(--border);
+            border-radius: 12px; padding: 20px; cursor: pointer;
+            text-align: center; transition: all 0.2s;
+            display: flex; flex-direction: column; align-items: center; gap: 10px;
+            box-shadow: var(--shadow-sm); position: relative; overflow: hidden;
+        }
+        .action-btn:hover { transform: translateY(-3px); box-shadow: var(--shadow-card); }
+        .action-btn i { font-size: 24px; margin-bottom: 5px; }
+        .action-btn strong { font-size: 14px; font-weight: 700; }
+        .action-btn span { font-size: 11px; color: var(--text-sub); }
+
+        /* Color Themes for Buttons */
+        .btn-eq i { color: var(--warning); }
+        .btn-eq:hover { border-color: var(--warning); background: var(--warning-bg); }
+        
+        .btn-fire i { color: var(--danger); }
+        .btn-fire:hover { border-color: var(--danger); background: var(--danger-bg); }
+        
+        .btn-flood i { color: var(--info); }
+        .btn-flood:hover { border-color: var(--info); background: var(--info-bg); }
+        
+        .btn-reset i { color: var(--success); }
+        .btn-reset:hover { border-color: var(--success); background: var(--success-bg); }
+
+        /* --- LISTS --- */
+        .list-container { flex: 1; overflow: hidden; display: flex; flex-direction: column; height: 300px; }
+        .list-scroll { flex: 1; overflow-y: auto; padding: 0; }
+        
+        .student-row {
+            padding: 12px 24px; border-bottom: 1px solid var(--border);
             display: flex; justify-content: space-between; align-items: center;
-            background: #f8f9fa; border-left: 4px solid #ddd; animation: slideIn 0.3s ease;
+            font-size: 14px; font-weight: 500;
         }
-        .safe-item { border-left-color: var(--safe-green); }
-        .note-item { border-left-color: var(--danger-red); background: #fff5f5; }
-        .note-message { font-style: italic; color: #555; display: block; margin-top: 4px; }
+        .student-row:last-child { border-bottom: none; }
+        .student-row:hover { background: #f9fafb; }
+        
+        .badge { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px; }
+        .badge-safe { background: var(--success-bg); color: var(--success); }
+        .badge-danger { background: var(--danger-bg); color: var(--danger); }
 
-        /* --- SECTION 3: SYSTEM LOG --- */
-        .log-area {
-            background: #fff; padding: 20px; border-radius: 12px;
-            border: 1px solid #eee; box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        /* --- FEED --- */
+        .feed-item {
+            padding: 16px 24px; border-bottom: 1px solid var(--border);
+            display: flex; flex-direction: column; gap: 6px;
         }
-        .log-title { font-weight: bold; margin-bottom: 15px; display: block; text-transform: uppercase; font-size: 12px; letter-spacing: 1px; color: #666; border-bottom: 1px solid #eee; padding-bottom: 10px;}
-        #status-log { font-family: 'Courier New', monospace; font-size: 13px; color: #333; max-height: 200px; overflow-y: auto;}
+        .feed-header { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-sub); font-weight: 600; }
+        .feed-msg { font-size: 14px; color: var(--text-main); line-height: 1.4; }
+        .log-row { padding: 10px 24px; font-size: 12px; border-bottom: 1px solid var(--border); display: flex; gap: 10px; }
 
-        /* Animation */
-        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes pulse-border {
-            0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
-        }
-
-        /* --- SMART ALERT STYLES --- */
-        .urgent-item {
-            border-left: 6px solid #ff0000 !important; /* Thick Red Border */
-            background-color: #fff0f0 !important;      /* Light Red Background */
-            animation: flashRed 2s infinite;             /* Pulse Animation */
-        }
-
-        .urgent-badge {
-            background: #ff0000; color: white;
-            padding: 2px 8px; border-radius: 4px;
-            font-size: 10px; font-weight: bold;
-            margin-left: 8px; vertical-align: middle;
-            display: inline-block;
-        }
-
-        @keyframes flashRed {
-            0% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.4); }
-            70% { box-shadow: 0 0 0 5px rgba(255, 0, 0, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); }
-        }
+        /* ANIMATIONS */
+        @keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
     </style>
 </head>
 <body>
 
-    <header>
-        <div class="header-left">
-            <div class="logo-area"><i class="fas fa-graduation-cap"></i></div>
-            <div class="school-info">
-                <h1>KABACAN NHS</h1>
-                <p>DRRM Command Center</p>
-            </div>
+    <nav class="sidebar">
+        <div class="brand">
+            <div class="brand-icon"><i class="fas fa-shield-alt"></i></div>
+            KNHS ALERT
         </div>
         
-        <div class="header-right">
-            <div class="admin-badge">
-                <div id="conn-status" class="status-dot"></div> ADMIN
-            </div>
-            <a href="/logout" class="btn-logout">
-                <i class="fas fa-sign-out-alt"></i> Logout
-            </a>
-        </div>
-    </header>
-
-    <div class="container">
+        <div class="nav-label">Main Menu</div>
+        <div class="nav-item active"><i class="fas fa-grid-2"></i> Dashboard</div>
+        <div class="nav-item"><i class="fas fa-users"></i> Students</div>
+        <div class="nav-item"><i class="fas fa-map-marked"></i> Safe Zones</div>
         
-        <div class="panel-title">
-            <h2>EMERGENCY CONTROLS</h2>
-            <p>Trigger alerts to all student devices instantly.</p>
+        <div class="nav-label" style="margin-top: 20px;">System</div>
+        <div class="nav-item"><i class="fas fa-cog"></i> Settings</div>
+        
+        <div class="nav-item btn-logout" onclick="window.location.href='/logout'">
+            <i class="fas fa-sign-out-alt"></i> Logout
         </div>
+    </nav>
 
-        <div class="control-grid">
-            <div class="action-card card-flood" id="btn-flood" onclick="triggerAlert('FLOOD', 'Warning: Flash flood detected. Evacuate to Gym.')">
-                <div class="card-icon"><i class="fas fa-water"></i></div>
-                <div class="card-title">FLOOD</div>
+    <main class="main">
+        <header>
+            <div class="page-title">
+                <h1>Command Center</h1>
+                <p>Real-time Disaster Risk Reduction & Management</p>
             </div>
-            <div class="action-card card-quake" id="btn-earthquake" onclick="triggerAlert('EARTHQUAKE', 'EARTHQUAKE! DUCK, COVER, HOLD!')">
-                <div class="card-icon"><i class="fas fa-house-crack"></i></div>
-                <div class="card-title">EARTHQUAKE</div>
+            <div class="status-pill">
+                <div class="pulse"></div>
+                System Operational
+                <span style="color: #ddd; margin: 0 8px;">|</span>
+                <span id="live-clock">00:00:00</span>
             </div>
-            <div class="action-card card-fire" id="btn-fire" onclick="triggerAlert('FIRE', 'Fire reported. Proceed to Open Field.')">
-                <div class="card-icon"><i class="fas fa-fire-extinguisher"></i></div>
-                <div class="card-title">FIRE</div>
-            </div>
-            <div class="action-card card-safe" onclick="triggerAlert('SAFE', 'All Clear. Return to normal activities.')">
-                <div class="card-icon"><i class="fas fa-check-circle"></i></div>
-                <div class="card-title">ALL CLEAR</div>
-            </div>
-        </div>
+        </header>
 
-        <div class="monitor-section">
-            <div class="monitor-card">
-                <div class="monitor-header" style="display:block;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                        <h3 style="margin:0; color:var(--safe-green);"><i class="fas fa-user-check"></i> Status Board</h3>
-                        <span style="font-size:12px; color:#888;">Class Total: <b id="total-students">0</b></span>
-                    </div>
-                    
-                    <div style="display:flex; gap:10px; margin-bottom:10px;">
-                        <div style="flex:1; background:#e8f8f5; padding:10px; border-radius:8px; text-align:center;">
-                            <small style="color:#27ae60; font-weight:700;">SAFE</small>
-                            <div id="safe-count" style="font-size:24px; font-weight:800; color:#27ae60;">0</div>
-                        </div>
-                        <div style="flex:1; background:#fdedec; padding:10px; border-radius:8px; text-align:center;">
-                            <small style="color:#c0392b; font-weight:700;">MISSING</small>
-                            <div id="missing-count" style="font-size:24px; font-weight:800; color:#c0392b;">0</div>
-                        </div>
-                    </div>
-
-                    <div style="background:#eee; height:8px; border-radius:4px; overflow:hidden; margin-bottom:10px;">
-                        <div id="safety-progress" style="width:0%; height:100%; background:var(--safe-green); transition: width 0.5s ease;"></div>
-                    </div>
-                </div>
+        <div class="grid-wrapper">
+            
+            <div class="left-col">
                 
-                <ul id="safe-list" class="live-list">
-                    <li style="text-align:center; color:#aaa; padding:20px;">Waiting for check-ins...</li>
-                </ul>
-            </div>
-
-            <div class="monitor-card">
-                <div class="monitor-header">
-                    <h3 style="margin:0; color:var(--danger-red);"><i class="fas fa-comment-medical"></i> Emergency Notes</h3>
-                    <span id="note-count" class="count-badge" style="background:var(--danger-red);">0</span>
+                <div class="stats-row">
+                    <div class="stat-card">
+                        <div>
+                            <div class="stat-num" id="count-safe" style="color: var(--success);">0</div>
+                            <div class="stat-label">Verified Safe</div>
+                        </div>
+                        <div class="stat-icon" style="background: var(--success-bg); color: var(--success);">
+                            <i class="fas fa-user-check"></i>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div>
+                            <div class="stat-num" id="count-danger" style="color: var(--danger);">0</div>
+                            <div class="stat-label">Unaccounted / Risk</div>
+                        </div>
+                        <div class="stat-icon" style="background: var(--danger-bg); color: var(--danger);">
+                            <i class="fas fa-user-clock"></i>
+                        </div>
+                    </div>
                 </div>
-                <ul id="notes-list" class="live-list">
-                    <li style="text-align:center; color:#aaa; padding:20px;">No messages yet.</li>
-                </ul>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title"><i class="fas fa-bullhorn" style="color: var(--primary);"></i> Broadcast Alert</div>
+                        <span style="font-size: 12px; color: var(--text-sub);">Select Protocol</span>
+                    </div>
+                    <div class="action-grid">
+                        <button class="action-btn btn-eq" onclick="triggerAlert('EARTHQUAKE')">
+                            <i class="fas fa-globe-americas"></i>
+                            <strong>Earthquake</strong>
+                            <span>Duck, Cover, Hold</span>
+                        </button>
+                        <button class="action-btn btn-fire" onclick="triggerAlert('FIRE')">
+                            <i class="fas fa-fire"></i>
+                            <strong>Fire Alarm</strong>
+                            <span>Evacuate to Open</span>
+                        </button>
+                        <button class="action-btn btn-flood" onclick="triggerAlert('FLOOD')">
+                            <i class="fas fa-water"></i>
+                            <strong>Flood</strong>
+                            <span>Higher Ground</span>
+                        </button>
+                        <button class="action-btn btn-reset" onclick="triggerAlert('SAFE')">
+                            <i class="fas fa-check-circle"></i>
+                            <strong>All Clear</strong>
+                            <span>Reset System</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card" style="flex:1;">
+                    <div class="card-header">
+                        <div class="card-title"><i class="fas fa-clipboard-check" style="color: var(--success);"></i> Safe Students</div>
+                        <span style="font-size: 12px; color: var(--text-sub);">Live Feed</span>
+                    </div>
+                    <div class="list-container">
+                        <div class="list-scroll" id="list-safe">
+                            </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="right-col">
+                
+                <div class="card" style="border-top: 4px solid var(--danger);">
+                    <div class="card-header">
+                        <div class="card-title"><i class="fas fa-exclamation-circle" style="color: var(--danger);"></i> Unaccounted</div>
+                    </div>
+                    <div class="list-container" style="height: 200px;">
+                        <div class="list-scroll" id="list-danger">
+                            <div style="padding:20px; text-align:center; color:#ccc; font-size:13px;">No data available</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card" style="flex:1;">
+                    <div class="card-header">
+                        <div class="card-title"><i class="fas fa-comment-alt" style="color: var(--info);"></i> Incoming Notes</div>
+                    </div>
+                    <div class="list-scroll" id="feed-notes">
+                        <div style="padding:20px; text-align:center; color:#ccc; font-size:13px;">No messages received</div>
+                    </div>
+                </div>
+
+                <div class="card" style="height: 200px;">
+                    <div class="card-header">
+                        <div class="card-title"><i class="fas fa-history" style="color: var(--text-sub);"></i> System Logs</div>
+                    </div>
+                    <div class="list-scroll" id="feed-logs" style="background: #f9fafb;">
+                        </div>
+                </div>
+
             </div>
         </div>
-
-        <div class="log-area">
-            <span class="log-title"><i class="fas fa-history"></i> System Event Log</span>
-            <div id="status-log">Loading history...</div>
-        </div>
-
-    </div>
+    </main>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        let safeCounter = 0;
-        let noteCounter = 0;
-        const statusLog = document.getElementById('status-log');
-        const connDot = document.getElementById('conn-status');
-
-        // --- CONNECTIVITY CHECK ---
-        socket.on('connect', () => {
-            connDot.classList.add('online');
-            console.log("Connected to Server");
-        });
         
-        socket.on('disconnect', () => {
-            connDot.classList.remove('online');
-            console.log("Disconnected from Server");
-            alert("⚠️ Admin Panel Disconnected! Refresh page.");
-        });
+        // --- DOM Elements ---
+        const countSafe = document.getElementById('count-safe');
+        const countDanger = document.getElementById('count-danger');
+        const listSafe = document.getElementById('list-safe');
+        const listDanger = document.getElementById('list-danger');
+        const feedNotes = document.getElementById('feed-notes');
+        const feedLogs = document.getElementById('feed-logs');
+        const clock = document.getElementById('live-clock');
 
-        // --- A. SEND ALERT ---
-        function triggerAlert(type, message) {
-            if(confirm(`Confirm broadcast of ${type} alert?`)) {
-                
-                console.log("Sending Alert:", type); 
-                socket.emit('broadcast-alert', { type: type, message: message });
-                
-                // Visuals
-                document.querySelectorAll('.action-card').forEach(c => c.classList.remove('active-alert'));
-                
-                if(type !== 'SAFE') {
-                    // Match the ID format (btn-flood, btn-fire, etc.)
-                    const btnId = 'btn-' + type.toLowerCase();
-                    const btn = document.getElementById(btnId);
-                    if(btn) btn.classList.add('active-alert');
-                }
+        // --- Clock ---
+        setInterval(() => {
+            clock.innerText = new Date().toLocaleTimeString();
+        }, 1000);
+
+        // --- Logic: Trigger Alert ---
+        function triggerAlert(type) {
+            let msg = "Proceed to safety.";
+            if(type === 'EARTHQUAKE') msg = "EARTHQUAKE! Duck, Cover, Hold!";
+            if(type === 'FIRE') msg = "FIRE! Evacuate to open space.";
+            if(type === 'FLOOD') msg = "FLOOD! Go to higher ground.";
+            if(type === 'SAFE') msg = "Situation Normal. All Clear.";
+
+            if(confirm(`Broadcast ${type} Alert?`)) {
+                socket.emit('broadcast-alert', { type: type, message: msg });
             }
         }
 
-        // --- B. RECEIVE DASHBOARD DATA (MISSING COUNTER) ---
-        // Configuration: Set this to your class size
-        const TOTAL_CLASS_SIZE = 50; 
-        
-        document.getElementById('total-students').innerText = TOTAL_CLASS_SIZE;
-        document.getElementById('missing-count').innerText = TOTAL_CLASS_SIZE;
+        // --- Logic: Data Handling ---
+        let safeStudents = new Set();
 
         socket.on('admin-dashboard-update', (data) => {
-            console.log("Received Student Update:", data);
-            
-            clearEmptyMsg('safe-list');
-            
-            // 1. UPDATE COUNTS
-            safeCounter++;
-            const missingCount = Math.max(0, TOTAL_CLASS_SIZE - safeCounter);
-            
-            document.getElementById('safe-count').innerText = safeCounter;
-            document.getElementById('missing-count').innerText = missingCount;
+            if(data.status === 'SAFE') {
+                if(!safeStudents.has(data.id)) {
+                    safeStudents.add(data.id);
+                    countSafe.innerText = safeStudents.size;
 
-            // 2. UPDATE PROGRESS BAR
-            const percentage = (safeCounter / TOTAL_CLASS_SIZE) * 100;
-            document.getElementById('safety-progress').style.width = percentage + '%';
-            if (missingCount === 0) {
-                document.getElementById('safety-progress').style.background = '#f1c40f'; // Gold
+                    const div = document.createElement('div');
+                    div.className = 'student-row';
+                    div.innerHTML = `
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <i class="fas fa-user-circle" style="color:var(--text-sub)"></i> 
+                            <strong>${data.id}</strong>
+                        </div>
+                        <span class="badge badge-safe">SAFE</span>
+                    `;
+                    listSafe.prepend(div);
+                }
             }
-
-            // 3. ADD TO LIST
-            const list = document.getElementById('safe-list');
-            const li = document.createElement('li');
-            li.className = 'list-item safe-item';
-            
-            // Fixed Google Maps Link
-            const mapLink = data.lat ? 
-                `<a href="https://www.google.com/maps?q=${data.lat},${data.lng}" target="_blank" style="color:#007bff; text-decoration:none; font-weight:bold;">
-                    <i class="fas fa-map-marked-alt"></i> View Loc
-                 </a>` : 
-                `<span style="color:#999">No GPS</span>`;
-
-            li.innerHTML = `<div><strong>${data.id}</strong><br>Marked Safe</div>${mapLink}`;
-            list.prepend(li);
         });
-
-        // --- C. RECEIVE NOTES (SMART FILTER + REPLY BUTTON) ---
-        // List of keywords that trigger the Red Alert style
-        const DANGER_WORDS = ['help', 'trapped', 'blood', 'injured', 'broken', 'stuck', 'emergency', 'cant move', 'hurt'];
 
         socket.on('admin-note-receive', (data) => {
-            clearEmptyMsg('notes-list');
-            noteCounter++;
-            document.getElementById('note-count').innerText = noteCounter;
+            if(feedNotes.innerText.includes('No messages')) feedNotes.innerHTML = '';
 
-            const list = document.getElementById('notes-list');
-            const li = document.createElement('li');
-            
-            // 1. Analyze for Keywords
-            const msgText = data.message.toLowerCase();
-            const isUrgent = DANGER_WORDS.some(word => msgText.includes(word));
-
-            // 2. Apply Styles
-            if (isUrgent) {
-                li.className = 'list-item note-item urgent-item'; 
-            } else {
-                li.className = 'list-item note-item'; 
-            }
-
-            // 3. Construct HTML with REPLY BUTTON
-            const badgeHtml = isUrgent ? '<span class="urgent-badge">SOS DETECTED</span>' : '';
-            const iconHtml = isUrgent ? '<i class="fas fa-exclamation-circle" style="color:red"></i> ' : '';
-
-            li.innerHTML = `
-                <div style="width:100%">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <div>
-                            <strong>${data.id}</strong> ${badgeHtml}
-                        </div> 
-                        <button onclick="confirmRescue(this, '${data.id}')" style="background:#27ae60; color:white; border:none; border-radius:4px; padding:4px 8px; font-size:10px; cursor:pointer; font-weight:bold;">
-                            <i class="fas fa-reply"></i> CONFIRM
-                        </button>
-                    </div>
-                    <div style="display:flex; justify-content:space-between; margin-top:5px;">
-                        <span class="note-message" style="${isUrgent ? 'color:#c0392b; font-weight:bold;' : ''}">
-                            ${iconHtml}"${data.message}"
-                        </span>
-                        <small style="color:#888; font-size:10px; align-self:flex-end;">${data.timestamp}</small>
-                    </div>
-                </div>`;
-
-            list.prepend(li); 
+            const div = document.createElement('div');
+            div.className = 'feed-item';
+            div.innerHTML = `
+                <div class="feed-header">
+                    <span>${data.id}</span>
+                    <span>${data.timestamp}</span>
+                </div>
+                <div class="feed-msg">${data.message}</div>
+            `;
+            feedNotes.prepend(div);
         });
 
-        // --- UPDATED CONFIRM FUNCTION ---
-        function confirmRescue(btnElement, studentId) {
-            if(confirm(`Notify Student ${studentId} that help is coming?`)) {
-                // 1. Send Signal
-                socket.emit('admin-reply', { 
-                    targetId: studentId, 
-                    message: "Admin has received your SOS. Rescue team is on the way." 
-                });
-
-                // 2. Change Button Visually
-                btnElement.innerHTML = '<i class="fas fa-check"></i> CONFIRMED';
-                btnElement.style.background = '#7f8c8d'; // Gray color
-                btnElement.style.cursor = 'default';
-                btnElement.disabled = true; // Prevent double clicking
-                btnElement.removeAttribute('onclick'); // Remove the click event
-            }
-        }
-
-        // --- D. RECEIVE SYSTEM LOGS ---
         socket.on('log-history', (history) => {
-            statusLog.innerHTML = ''; 
-            if(history.length === 0) statusLog.innerHTML = '<div style="color:#aaa; padding:10px;">System Ready. No recent alerts.</div>';
-            history.forEach(log => addLogToScreen(log));
+            feedLogs.innerHTML = '';
+            history.forEach(log => addLog(log));
         });
 
         socket.on('update-logs', (log) => {
-            if(statusLog.innerText.includes('System Ready')) statusLog.innerHTML = '';
-            addLogToScreen(log);
+            addLog(log);
         });
 
-        function addLogToScreen(log) {
-            const color = log.type === 'SAFE' ? 'green' : 'red';
-            const html = `
-                <div style="border-bottom:1px solid #f0f0f0; padding: 8px 0;">
-                    <span style="color:${color}; margin-right:10px;">●</span> 
-                    <strong>${log.type}</strong> 
-                    <span style="color:#888; margin-left:10px; font-size:12px;">${log.time}</span>
-                </div>`;
-            statusLog.innerHTML = html + statusLog.innerHTML; 
-        }
-
-        function clearEmptyMsg(id) {
-            const list = document.getElementById(id);
-            if(list.children[0] && (list.children[0].innerText.includes('Waiting') || list.children[0].innerText.includes('No messages'))) {
-                list.innerHTML = '';
+        socket.on('receive-alert', (data) => {
+            if(data.type === 'SAFE') {
+                safeStudents.clear();
+                listSafe.innerHTML = '';
+                countSafe.innerText = '0';
             }
+        });
+
+        function addLog(log) {
+            const color = log.type === 'SAFE' ? 'var(--success)' : 'var(--danger)';
+            const div = document.createElement('div');
+            div.className = 'log-row';
+            div.innerHTML = `
+                <span style="color: var(--text-sub);">${log.time}</span>
+                <strong style="color: ${color};">${log.type}</strong>
+            `;
+            feedLogs.prepend(div);
         }
     </script>
 </body>

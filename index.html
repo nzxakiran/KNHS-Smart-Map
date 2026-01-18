@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#003366">
-    <title>KNHS Student Alert</title>
+    <title>KNHS Alert</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
@@ -45,19 +45,8 @@
             padding-top: max(15px, env(safe-area-inset-top)); 
         }
         .app-title { font-weight: 800; font-size: 18px; color: var(--primary); letter-spacing: -0.5px; }
-        
-        .header-controls { display: flex; align-items: center; gap: 15px; }
         .app-status { font-size: 12px; font-weight: 600; color: var(--success); display: flex; align-items: center; gap: 6px; }
         .pulse-dot { width: 8px; height: 8px; background: var(--success); border-radius: 50%; animation: pulse 2s infinite; }
-        
-        /* LOGOUT BUTTON STYLE */
-        .btn-logout {
-            background: #f1f2f6; color: var(--text-light); border: none;
-            width: 32px; height: 32px; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer; font-size: 14px; transition: 0.2s;
-        }
-        .btn-logout:hover { background: #dfe4ea; color: var(--danger); }
 
         /* MAIN */
         #main-container {
@@ -73,6 +62,7 @@
             padding: 20px;
             box-shadow: var(--shadow);
             border: 1px solid rgba(0,0,0,0.02);
+            transition: transform 0.2s;
         }
 
         /* MAP */
@@ -108,10 +98,20 @@
             border-radius: 18px; font-size: 16px; font-weight: 700;
             display: flex; align-items: center; justify-content: center; gap: 10px;
             cursor: pointer; transition: all 0.2s;
-            box-shadow: 0 4px 15px rgba(46, 213, 115, 0.3);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-bottom: 10px;
         }
-        .btn-safe { background: var(--success); color: white; }
+        
+        .btn-safe { background: var(--success); color: white; box-shadow: 0 4px 15px rgba(46, 213, 115, 0.3); }
+        .btn-safe:active { transform: scale(0.97); }
         .btn-safe.sent { background: #26af61; opacity: 0.8; cursor: default; }
+
+        /* NEW DANGER BUTTON STYLE */
+        .btn-danger-mode {
+            background: var(--danger); color: white;
+            box-shadow: 0 4px 15px rgba(255, 71, 87, 0.3);
+        }
+        .btn-danger-mode:active { transform: scale(0.97); }
 
         /* INPUT */
         .input-wrapper {
@@ -132,20 +132,10 @@
             cursor: pointer; display: flex; align-items: center; justify-content: center;
         }
 
-        /* EMERGENCY CARD - FIXED STYLING */
-        #danger-card { 
-            display: none; /* Hidden by default */
-            border-left: 6px solid var(--danger); 
-            background: #fff5f5; /* Light red bg */
-            animation: pulse-border 1.5s infinite;
-        }
+        /* EMERGENCY CARD */
+        #danger-card { display: none; border-left: 6px solid var(--danger); }
         .danger-header { color: var(--danger); display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-weight: 800; font-size: 20px; }
-        
-        @keyframes pulse-border {
-            0% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(255, 71, 87, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); }
-        }
+        .guide-img { width: 100%; height: 140px; object-fit: cover; border-radius: 12px; margin-top: 10px; }
 
         /* TOAST */
         #toast {
@@ -159,7 +149,7 @@
 
         /* LOGIN MODAL */
         #login-modal {
-            position: fixed; inset: 0; background: rgba(255,255,255,0.98);
+            position: fixed; inset: 0; background: rgba(255,255,255,0.95);
             backdrop-filter: blur(5px); z-index: 4000;
             display: flex; align-items: center; justify-content: center;
         }
@@ -171,26 +161,9 @@
         }
 
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
-
-        /* RESCUE BANNER (Hidden by default) */
-        #rescue-banner {
-            position: fixed; top: -100px; left: 0; right: 0;
-            background: #27ae60; color: white;
-            padding: 20px; text-align: center;
-            z-index: 5000; box-shadow: 0 5px 20px rgba(0,0,0,0.3);
-            transition: top 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-        }
-        .rescue-title { font-size: 20px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
-        .rescue-sub { font-size: 14px; opacity: 0.9; margin-top: 5px; }
     </style>
 </head>
 <body>
-
-    <div id="rescue-banner">
-        <div class="rescue-title"><i class="fas fa-ambulance"></i> RESCUE DISPATCHED</div>
-        <div class="rescue-sub">Admin has seen your message. Stay calm and stay put.</div>
-    </div>
 
     <div id="toast"><i class="fas fa-check-circle" style="color: #2ed573;"></i> <span id="toast-msg">Update Sent</span></div>
 
@@ -202,7 +175,7 @@
             <h2 style="margin: 0 0 10px 0; color: var(--primary);">Student Check-In</h2>
             <p style="margin: 0 0 25px 0; color: var(--text-light); font-size: 14px;">Enter your ID to join the network</p>
             <input type="text" id="student-id-input" class="login-input" placeholder="LRN / Student ID">
-            <button id="btn-connect" class="btn-large" style="background: var(--primary); color: white;" onclick="loginUser()">
+            <button class="btn-large" style="background: var(--primary); color: white;" onclick="loginUser()">
                 CONNECT <i class="fas fa-arrow-right"></i>
             </button>
         </div>
@@ -210,12 +183,7 @@
 
     <header>
         <div class="app-title"><i class="fas fa-shield-alt"></i> KNHS Alert</div>
-        <div class="header-controls">
-            <div class="app-status"><div class="pulse-dot"></div> ONLINE</div>
-            <button class="btn-logout" onclick="logoutUser()" title="Logout">
-                <i class="fas fa-sign-out-alt"></i>
-            </button>
-        </div>
+        <div class="app-status"><div class="pulse-dot"></div> ONLINE</div>
     </header>
 
     <div id="main-container">
@@ -236,6 +204,7 @@
                 <span id="alert-type-text">EMERGENCY</span>
             </div>
             <p id="alert-message-text" style="color: var(--text-dark);">Please proceed to the nearest safe zone immediately.</p>
+            <img id="guide-img" class="guide-img" src="" style="display:none;">
         </div>
 
         <div id="safe-card" class="app-card">
@@ -243,6 +212,10 @@
             
             <button id="btn-safe" class="btn-large btn-safe" onclick="markAsSafe()">
                 <i class="fas fa-check-circle"></i> I AM SAFE
+            </button>
+
+            <button id="btn-danger" class="btn-large btn-danger-mode" onclick="markAsDanger()">
+                <i class="fas fa-exclamation-circle"></i> I AM NOT SAFE
             </button>
 
             <div class="input-wrapper">
@@ -266,12 +239,13 @@
         const dangerCard = document.getElementById('danger-card');
         const alertTitle = document.getElementById('alert-type-text');
         const alertMsg = document.getElementById('alert-message-text');
+        const guideImg = document.getElementById('guide-img');
         const siren = document.getElementById('siren');
         const distDisplay = document.getElementById('dist-display');
 
         let map, userMarker, destMarker, routeLine;
 
-        // LOCATIONS
+        // --- COORDINATES ---
         const LOCATIONS = {
             PRINCIPAL_FRONT: [7.100589893149529, 124.82393056927546], 
             MENDOZA_COURT:   [7.100077551009359, 124.82369094608939], 
@@ -295,10 +269,7 @@
 
         function initMap() {
             map = L.map('map', { zoomControl: false }).setView([KNHS_LAT, KNHS_LNG], 19);
-            
-            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                attribution: 'Esri'
-            }).addTo(map);
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Esri' }).addTo(map);
             L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}').addTo(map);
 
             const safeIcon = L.divIcon({
@@ -308,18 +279,13 @@
             });
 
             SAFE_ZONES.forEach(zone => {
-                L.marker([zone[0], zone[1]], {icon: safeIcon})
-                 .addTo(map)
-                 .bindPopup(`<b>${zone[2]}</b><br>Safe Zone`);
+                L.marker([zone[0], zone[1]], {icon: safeIcon}).addTo(map).bindPopup(`<b>${zone[2]}</b><br>Safe Zone`);
             });
         }
 
         function centerMap() {
-            if(userMarker) {
-                map.setView(userMarker.getLatLng(), 19);
-            } else {
-                map.setView([KNHS_LAT, KNHS_LNG], 19);
-            }
+            if(userMarker) map.setView(userMarker.getLatLng(), 19);
+            else map.setView([KNHS_LAT, KNHS_LNG], 19);
         }
 
         function activateGPS() {
@@ -334,7 +300,6 @@
 
         function updateUserLocation(lat, lng) {
             const userLatLng = L.latLng(lat, lng);
-            
             if (!userMarker) {
                 const userIcon = L.divIcon({
                     html: "<div style='background-color:#3498db; width:18px; height:18px; border-radius:50%; border:3px solid white; box-shadow:0 0 10px rgba(0,0,0,0.3);'></div>",
@@ -345,22 +310,17 @@
             } else {
                 userMarker.setLatLng(userLatLng);
             }
-
             if(destMarker) drawDirectPath(userLatLng, destMarker.getLatLng());
         }
 
         function drawDirectPath(start, end) {
             if(routeLine) map.removeLayer(routeLine);
-            routeLine = L.polyline([start, end], {
-                color: '#2ed573', weight: 5, opacity: 0.9, dashArray: '10, 10'
-            }).addTo(map);
-
+            routeLine = L.polyline([start, end], { color: '#2ed573', weight: 5, opacity: 0.9, dashArray: '10, 10' }).addTo(map);
             const dist = start.distanceTo(end).toFixed(0);
             document.querySelector('#dist-display span').innerText = `${dist}m to Safety`;
             distDisplay.style.display = 'flex';
         }
 
-        // --- AUTH & AUDIO UNLOCK ---
         let studentID = localStorage.getItem('knhs_student_id');
 
         function checkLogin() {
@@ -373,12 +333,6 @@
         function loginUser() {
             const input = document.getElementById('student-id-input').value.trim();
             if (input.length > 0) {
-                // UNLOCK AUDIO: Play and immediately pause
-                siren.play().then(() => {
-                    siren.pause();
-                    siren.currentTime = 0;
-                }).catch(e => console.log("Audio permission pending"));
-
                 studentID = input;
                 localStorage.setItem('knhs_student_id', studentID);
                 checkLogin();
@@ -386,84 +340,69 @@
             } else { showToast("Please enter valid ID"); }
         }
 
-        // --- LOGOUT FUNCTION ---
-        function logoutUser() {
-            if(confirm("Are you sure you want to log out?")) {
-                localStorage.removeItem('knhs_student_id'); // Clear ID
-                window.location.href = '/logout'; // Redirect to Server Logout
-            }
-        }
-
-        // --- STATUS UPDATES ---
         function markAsSafe() {
             if (!studentID) return showToast("Please Login First");
-            
             const btn = document.getElementById('btn-safe');
             btn.innerHTML = '<i class="fas fa-check"></i> SENT!';
             btn.classList.add('sent');
-            
             const loc = userMarker ? userMarker.getLatLng() : {lat: null, lng: null};
             socket.emit('student-status', { id: studentID, status: 'SAFE', lat: loc.lat, lng: loc.lng });
             showToast("Status: SAFE sent to Admin");
+            setTimeout(() => { btn.innerHTML = '<i class="fas fa-check-circle"></i> I AM SAFE'; btn.classList.remove('sent'); }, 5000);
+        }
+
+        // --- NEW DANGER FUNCTION ---
+        function markAsDanger() {
+            if (!studentID) return showToast("Please Login First");
+            const btn = document.getElementById('btn-danger');
+            btn.innerHTML = '<i class="fas fa-exclamation"></i> ALERT SENT';
             
-            setTimeout(() => {
-                btn.innerHTML = '<i class="fas fa-check-circle"></i> I AM SAFE';
-                btn.classList.remove('sent');
-            }, 5000);
+            const loc = userMarker ? userMarker.getLatLng() : {lat: null, lng: null};
+            // Send DANGER status
+            socket.emit('student-status', { id: studentID, status: 'DANGER', lat: loc.lat, lng: loc.lng });
+            
+            showToast("DANGER ALERT SENT TO ADMIN");
+            setTimeout(() => { btn.innerHTML = '<i class="fas fa-exclamation-circle"></i> I AM NOT SAFE'; }, 3000);
         }
 
         function sendNote() {
             const input = document.getElementById('student-note');
             const note = input.value.trim();
-            
             if (!studentID) return showToast("Please Login First");
             if (!note) return showToast("Message cannot be empty");
-
             const btn = document.querySelector('.btn-send');
             const originalIcon = btn.innerHTML;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-
-            socket.emit('student-note', { 
-                id: studentID, 
-                message: note,
-                timestamp: new Date().toLocaleTimeString()
-            });
-
-            setTimeout(() => {
-                input.value = '';
-                btn.innerHTML = originalIcon;
-                showToast("Message Sent to Admin");
-            }, 600);
+            socket.emit('student-note', { id: studentID, message: note, timestamp: new Date().toLocaleTimeString() });
+            setTimeout(() => { input.value = ''; btn.innerHTML = originalIcon; showToast("Message Sent to Admin"); }, 600);
         }
 
-        // --- ALERTS LOGIC (FIXED) ---
         socket.on('receive-alert', (data) => {
-            console.log("ALERT RECEIVED:", data); // Debugging
-
-            if (data.type === 'SAFE' || data.type === 'CLEAR') {
+            if (data.type === 'SAFE') {
                 dangerCard.style.display = 'none';
-                safeCard.style.display = 'block'; // Show safe card
+                safeCard.style.display = 'block';
                 siren.pause();
-                siren.currentTime = 0;
                 showToast("System returned to Normal");
             } else {
-                 // Hide safe card
-                dangerCard.style.display = 'block'; // Show danger card
-                
+                safeCard.style.display = 'none';
+                dangerCard.style.display = 'block';
                 alertTitle.innerText = `${data.type} ALERT`;
                 alertMsg.innerText = data.message;
                 
-                // --- CHOOSE DESTINATION ---
-                let bestZone = LOCATIONS.PRINCIPAL_FRONT; // Default
-                if (data.type === 'FLOOD') {
-                    bestZone = LOCATIONS.MENDOZA_COURT;
+                // --- AUTO-REPLY LOGIC: Send Green Dot (SAFE) Initially ---
+                if (userMarker) {
+                    const loc = userMarker.getLatLng();
+                    // Send status 'SAFE' initially so Admin sees green dot
+                    socket.emit('student-status', { id: studentID, status: 'SAFE', lat: loc.lat, lng: loc.lng });
                 }
 
+                // Show Map Route
+                let bestZone = LOCATIONS.PRINCIPAL_FRONT; 
+                if (data.type === 'FLOOD') bestZone = LOCATIONS.MENDOZA_COURT;
                 const newDest = L.latLng(bestZone[0], bestZone[1]);
                 
-                if(destMarker) {
-                    destMarker.setLatLng(newDest);
-                } else {
+                if(destMarker) destMarker.setLatLng(newDest);
+                else {
                     const destIcon = L.divIcon({
                         className: 'dest-marker',
                         html: `<div style="font-size:32px; color:#2ed573;"><i class="fas fa-map-marker-alt"></i></div>`,
@@ -472,8 +411,12 @@
                     destMarker = L.marker(newDest, {icon: destIcon}).addTo(map);
                 }
                 
-                // Play Siren (Audio is already unlocked from login)
-                siren.play().catch(e => console.log("Siren failed:", e));
+                if(userMarker) {
+                    drawDirectPath(userMarker.getLatLng(), newDest);
+                    map.fitBounds(L.latLngBounds([userMarker.getLatLng(), newDest]), {padding:[40,40]});
+                } else map.setView(newDest, 19);
+
+                siren.play().catch(e => console.log("Audio requires interaction"));
                 showToast("EMERGENCY ALERT RECEIVED");
             }
         });
@@ -484,28 +427,6 @@
             toast.style.top = '20px';
             setTimeout(() => { toast.style.top = '-60px'; }, 3000);
         }
-
-        // --- RECEIVE ADMIN ACKNOWLEDGEMENT ---
-        // --- UPDATED RECEIVE REPLY ---
-        socket.on('receive-reply', (data) => {
-            const myID = localStorage.getItem('knhs_student_id');
-            
-            if (myID && data.targetId === myID) {
-                // 1. Play Reassurance Sound
-                siren.play().then(() => setTimeout(() => { siren.pause(); }, 2000));
-                if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 500]);
-
-                // 2. SHOW THE PERMANENT BANNER
-                const banner = document.getElementById('rescue-banner');
-                banner.style.top = '0'; // Slide down
-
-                // 3. Optional: Hide the "I am safe" buttons to prevent confusion?
-                // document.getElementById('safe-card').style.opacity = '0.5';
-                
-                // 4. Toast Backup
-                showToast("HELP IS ON THE WAY!");
-            }
-        });
     </script>
 </body>
 </html>

@@ -82,7 +82,7 @@
         .grid-wrapper {
             padding: 0 30px 30px 30px; flex: 1; overflow-y: auto;
             display: grid;
-            grid-template-columns: 3fr 2fr; /* 60% Map/Controls | 40% Feeds */
+            grid-template-columns: 3fr 2fr;
             gap: 24px;
         }
         .left-col { display: flex; flex-direction: column; gap: 24px; }
@@ -115,9 +115,7 @@
         }
 
         /* MAP CONTAINER */
-        #admin-map {
-            width: 100%; height: 400px; z-index: 1;
-        }
+        #admin-map { width: 100%; height: 400px; z-index: 1; }
 
         /* ACTIONS */
         .action-grid {
@@ -184,7 +182,6 @@
         <div class="grid-wrapper">
             
             <div class="left-col">
-                
                 <div class="stats-row">
                     <div class="stat-card">
                         <div>
@@ -229,11 +226,9 @@
                         </button>
                     </div>
                 </div>
-
             </div>
 
             <div class="right-col">
-                
                 <div class="card" style="border-top: 4px solid var(--danger); height: 35%;">
                     <div class="card-header">
                         <div class="card-title"><i class="fas fa-exclamation-triangle" style="color: var(--danger);"></i> Risk / Alerts</div>
@@ -260,7 +255,6 @@
                     </div>
                     <div class="list-scroll" id="feed-logs" style="background: #f9fafb;"></div>
                 </div>
-
             </div>
         </div>
     </main>
@@ -271,22 +265,16 @@
         const socket = io();
         
         // --- 1. ADMIN MAP SETUP ---
-        // Coordinates: KNHS
         const KNHS_LOC = [7.100265815095807, 124.82402407212273];
-        
         const map = L.map('admin-map').setView(KNHS_LOC, 18);
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            attribution: 'Esri'
-        }).addTo(map);
-        
-        // Add School Marker
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Esri' }).addTo(map);
         L.marker(KNHS_LOC).addTo(map).bindPopup("<b>KNHS Command Center</b>").openPopup();
 
-        // Student Markers Store
+        // Markers & Data
         const studentMarkers = {}; 
-        const studentData = new Map(); // Stores status of each student
+        const studentData = new Map(); 
 
-        // --- 2. DOM ELEMENTS ---
+        // --- DOM ---
         const countSafe = document.getElementById('count-safe');
         const countDanger = document.getElementById('count-danger');
         const listSafe = document.getElementById('list-safe');
@@ -296,24 +284,21 @@
 
         setInterval(() => { clock.innerText = new Date().toLocaleTimeString(); }, 1000);
 
-        // --- 3. SOCKET LOGIC ---
-        
-        // UPDATE STUDENT ON MAP
+        // --- SOCKET LOGIC ---
         socket.on('admin-dashboard-update', (data) => {
             const { id, status, lat, lng } = data;
             
-            // 1. Update Data Store
+            // 1. UPDATE DATA
             studentData.set(id, status);
             updateCounts();
-
-            // 2. Update Lists
             updateLists(id, status);
 
-            // 3. Update Map Marker
+            // 2. UPDATE MAP MARKER
             if (lat && lng) {
-                let color = status === 'SAFE' ? '#10b981' : '#ef4444'; // Green or Red
+                // If DANGER or RISK -> Red, else Green
+                let color = (status === 'DANGER' || status === 'RISK') ? '#ef4444' : '#10b981';
                 
-                // Custom Dot Icon
+                // Custom Dot
                 const dotIcon = L.divIcon({
                     className: 'custom-dot',
                     html: `<div style="width:14px; height:14px; background:${color}; border:2px solid white; border-radius:50%; box-shadow:0 2px 5px rgba(0,0,0,0.5);"></div>`,
@@ -323,36 +308,38 @@
                 if (studentMarkers[id]) {
                     studentMarkers[id].setLatLng([lat, lng]);
                     studentMarkers[id].setIcon(dotIcon);
+                    studentMarkers[id].bindPopup(`<b>Student: ${id}</b><br>Status: <span style="color:${color}; font-weight:bold;">${status}</span>`);
                 } else {
                     studentMarkers[id] = L.marker([lat, lng], {icon: dotIcon}).addTo(map)
-                        .bindPopup(`<b>Student: ${id}</b><br>Status: ${status}`);
+                        .bindPopup(`<b>Student: ${id}</b><br>Status: <span style="color:${color}; font-weight:bold;">${status}</span>`);
                 }
             }
         });
 
-        // HANDLE NOTES (Treat as Danger/Risk)
+        // Handle Notes -> Treat as DANGER
         socket.on('admin-note-receive', (data) => {
-            // If they send a note, assume they need help -> Turn Red
             const { id, message, timestamp } = data;
             
-            // Update internal status to RISK
+            // Set status to RISK
             studentData.set(id, 'RISK');
             updateCounts();
             
             // Add to Danger List
+            if(listDanger.innerHTML.includes('No alerts')) listDanger.innerHTML = '';
+            
             const div = document.createElement('div');
             div.className = 'feed-item';
             div.style.borderLeft = '4px solid var(--danger)';
             div.innerHTML = `
                 <div class="feed-header">
-                    <span style="color:var(--danger)">${id} (HELP)</span>
+                    <span style="color:var(--danger)">${id} (NOTE)</span>
                     <span>${timestamp}</span>
                 </div>
                 <div class="feed-msg">${message}</div>
             `;
             listDanger.prepend(div);
 
-            // Change Map Marker to RED if it exists
+            // Turn Marker Red if exists
             if (studentMarkers[id]) {
                 const redIcon = L.divIcon({
                     html: `<div style="width:16px; height:16px; background:#ef4444; border:2px solid white; border-radius:50%; animation:pulse-red 1s infinite;"></div>`,
@@ -362,7 +349,6 @@
             }
         });
 
-        // --- 4. HELPERS ---
         function updateCounts() {
             let safe = 0;
             let risk = 0;
@@ -375,15 +361,19 @@
         }
 
         function updateLists(id, status) {
-            // Simple visual append for now (Real app would re-render list)
+            // Visual Append
             if (status === 'SAFE') {
                 const div = document.createElement('div');
                 div.className = 'student-row';
-                div.innerHTML = `
-                    <strong>${id}</strong>
-                    <span class="badge badge-safe">SAFE</span>
-                `;
+                div.innerHTML = `<strong>${id}</strong><span class="badge badge-safe">SAFE</span>`;
                 listSafe.prepend(div);
+            } else if (status === 'DANGER') {
+                if(listDanger.innerHTML.includes('No alerts')) listDanger.innerHTML = '';
+                const div = document.createElement('div');
+                div.className = 'feed-item';
+                div.style.borderLeft = '4px solid var(--danger)';
+                div.innerHTML = `<div class="feed-header"><span style="color:var(--danger)">${id}</span><span>NOW</span></div><div class="feed-msg">Marked NOT SAFE</div>`;
+                listDanger.prepend(div);
             }
         }
 
@@ -397,18 +387,16 @@
             if(confirm(`Broadcast ${type}?`)) {
                 socket.emit('broadcast-alert', { type: type, message: msg });
                 
-                // If Safe/Reset, clear map
                 if(type === 'SAFE') {
                     for(let id in studentMarkers) map.removeLayer(studentMarkers[id]);
                     studentData.clear();
                     updateCounts();
                     listSafe.innerHTML = '';
-                    listDanger.innerHTML = '<div style="padding:20px; text-align:center; color:#ccc;">No alerts</div>';
+                    listDanger.innerHTML = '<div style="padding:20px; text-align:center; color:#ccc; font-size:13px;">No alerts yet</div>';
                 }
             }
         }
 
-        // Logs
         socket.on('log-history', (history) => {
             feedLogs.innerHTML = '';
             history.forEach(log => addLog(log));

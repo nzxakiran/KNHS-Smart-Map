@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KNHS Command Pro</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <style>
+        :root {
+            --bg-body: #f3f4f6;
+            --surface: #ffffff;
+            --border: #e5e7eb;
+            --primary: #003366; 
+            --primary-light: #e0e7ff;
+            --danger: #ef4444; 
+            --danger-bg: #fef2f2;
+            --warning: #f59e0b; 
+            --warning-bg: #fffbeb;
+            --success: #10b981; 
+            --success-bg: #ecfdf5;
+            --info: #3b82f6; 
+            --info-bg: #eff6ff;
+            --text-main: #111827;
+            --text-sub: #6b7280;
+            --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --radius: 16px;
+        }
+
+        * { box-sizing: border-box; outline: none; }
+
+        body {
+            font-family: 'Manrope', sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            margin: 0; padding: 0;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            width: 260px; background: var(--surface); border-right: 1px solid var(--border);
+            display: flex; flex-direction: column; padding: 24px; z-index: 20;
+        }
+        .brand {
+            display: flex; align-items: center; gap: 12px; font-weight: 800; font-size: 20px; 
+            color: var(--primary); margin-bottom: 40px;
+        }
+        .brand-icon {
+            width: 36px; height: 36px; background: var(--primary); color: white;
+            border-radius: 8px; display: flex; align-items: center; justify-content: center;
+        }
+        .nav-label { font-size: 11px; font-weight: 700; color: var(--text-sub); text-transform: uppercase; margin-bottom: 10px; }
+        .nav-item {
+            padding: 12px 16px; border-radius: 10px; cursor: pointer; font-weight: 600; 
+            color: var(--text-sub); display: flex; align-items: center; gap: 12px; transition: 0.2s; margin-bottom: 4px;
+        }
+        .nav-item:hover, .nav-item.active { background: var(--primary-light); color: var(--primary); }
+        .btn-logout { margin-top: auto; color: var(--danger); background: var(--danger-bg); justify-content: center; }
+        .btn-logout:hover { background: #fee2e2; }
+
+        /* MAIN CONTENT */
+        .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+        /* HEADER */
+        header {
+            height: 100px;
+            background: var(--bg-body); 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            padding: 20px 30px 0 30px;
+        }
+        .page-title h1 { font-size: 24px; font-weight: 800; margin: 0; letter-spacing: -0.5px; }
+        .status-pill {
+            background: white; padding: 8px 16px; border-radius: 30px; border: 1px solid var(--border); 
+            font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; box-shadow: var(--shadow-card);
+        }
+        .pulse { width: 8px; height: 8px; background: var(--success); border-radius: 50%; animation: pulse-green 2s infinite; }
+
+        /* GRID LAYOUT */
+        .grid-wrapper {
+            padding: 20px 30px 30px 30px; flex: 1; overflow-y: auto;
+            display: grid;
+            grid-template-columns: 3fr 2fr;
+            gap: 24px;
+        }
+        .left-col { display: flex; flex-direction: column; gap: 24px; }
+        .right-col { display: flex; flex-direction: column; gap: 24px; height: 100%; }
+
+        /* CARDS */
+        .card {
+            background: var(--surface); border-radius: var(--radius);
+            box-shadow: var(--shadow-card); border: 1px solid var(--border);
+            overflow: hidden; display: flex; flex-direction: column;
+        }
+        .card-header {
+            padding: 15px 24px; border-bottom: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center; background: #fafafa;
+        }
+        .card-title { font-weight: 700; font-size: 15px; color: var(--text-main); display: flex; align-items: center; gap: 8px; }
+
+        /* STATS */
+        .stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        .stat-card {
+            background: var(--surface); padding: 24px; border-radius: var(--radius);
+            border: 1px solid var(--border); box-shadow: var(--shadow-card);
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .stat-num { font-size: 36px; font-weight: 800; line-height: 1; }
+        .stat-label { font-size: 13px; font-weight: 600; color: var(--text-sub); margin-top: 4px; }
+        .stat-icon {
+            width: 48px; height: 48px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center; font-size: 20px;
+        }
+
+        /* MAP CONTAINER */
+        #admin-map { width: 100%; height: 400px; z-index: 1; }
+
+        /* ACTIONS */
+        .action-grid {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 24px;
+        }
+        .action-btn {
+            border: none; background: white; border: 1px solid var(--border);
+            border-radius: 12px; padding: 15px; cursor: pointer; text-align: center; 
+            transition: all 0.2s; display: flex; flex-direction: column; align-items: center; gap: 8px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .action-btn:hover { transform: translateY(-3px); box-shadow: var(--shadow-card); }
+        .action-btn i { font-size: 20px; }
+        .action-btn strong { font-size: 13px; font-weight: 700; }
+        
+        .btn-eq:hover { border-color: var(--warning); background: var(--warning-bg); }
+        .btn-fire:hover { border-color: var(--danger); background: var(--danger-bg); }
+        .btn-flood:hover { border-color: var(--info); background: var(--info-bg); }
+        .btn-reset:hover { border-color: var(--success); background: var(--success-bg); }
+
+        /* LISTS */
+        .list-container { flex: 1; overflow: hidden; display: flex; flex-direction: column; height: 100%; }
+        .list-scroll { flex: 1; overflow-y: auto; padding: 0; }
+        
+        .student-row {
+            padding: 12px 24px; border-bottom: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 500;
+            transition: background 0.5s; /* Smooth transition for color change */
+        }
+        .badge { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px; }
+        .badge-safe { background: var(--success-bg); color: var(--success); }
+        .badge-danger { background: var(--danger-bg); color: var(--danger); }
+
+        .feed-item { padding: 16px 24px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; }
+        .feed-header { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-sub); font-weight: 600; }
+        .log-row { padding: 10px 24px; font-size: 12px; border-bottom: 1px solid var(--border); display: flex; gap: 10px; }
+
+        /* SOS STYLES */
+        .urgent-item {
+            border-left: 6px solid #ef4444 !important;
+            background-color: #fef2f2 !important;
+            animation: pulse-red 2s infinite;
+        }
+        .urgent-badge {
+            background: #ef4444; color: white;
+            padding: 2px 8px; border-radius: 4px;
+            font-size: 10px; font-weight: 800; margin-left: 8px;
+        }
+        .btn-confirm {
+            background: var(--success); color: white; border: none; 
+            border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 700;
+            cursor: pointer; display: flex; align-items: center; gap: 5px;
+        }
+        .btn-confirm:hover { background: #059669; }
+
+        /* FLASH GREEN ANIMATION (For newly safe students) */
+        @keyframes flash-green-row {
+            0% { background-color: rgba(16, 185, 129, 0.4); }
+            100% { background-color: transparent; }
+        }
+        .row-update-safe {
+            animation: flash-green-row 2s ease-out forwards;
+        }
+
+        @keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
+        @keyframes pulse-red { 0% { box-shadow: inset 0 0 0 0 rgba(239, 68, 68, 0.2); } 50% { box-shadow: inset 0 0 20px 0 rgba(239, 68, 68, 0.2); } 100% { box-shadow: inset 0 0 0 0 rgba(239, 68, 68, 0.2); } }
+
+    </style>
+</head>
+<body>
+
+    <nav class="sidebar">
+        <div class="brand">
+            <div class="brand-icon"><i class="fas fa-shield-alt"></i></div>
+            KNHS ADMIN
+        </div>
+        <div class="nav-label">Operations</div>
+        <div class="nav-item active"><i class="fas fa-map"></i> Live Map</div>
+        <div class="nav-item"><i class="fas fa-list"></i> Roster</div>
+        <div class="nav-item btn-logout" onclick="window.location.href='/logout'"><i class="fas fa-sign-out-alt"></i> Logout</div>
+    </nav>
+
+    <main class="main">
+        <header>
+            <div class="page-title">
+                <h1>Command Center</h1>
+                <p>Kabacan National High School</p>
+            </div>
+            <div class="status-pill">
+                <div class="pulse"></div> System Active <span style="color:#ddd; margin:0 8px;">|</span> <span id="live-clock">00:00:00</span>
+            </div>
+        </header>
+
+        <div class="grid-wrapper">
+            
+            <div class="left-col">
+                <div class="stats-row">
+                    <div class="stat-card">
+                        <div>
+                            <div class="stat-num" id="count-safe" style="color: var(--success);">0</div>
+                            <div class="stat-label">Verified Safe</div>
+                        </div>
+                        <div class="stat-icon" style="background: var(--success-bg); color: var(--success);"><i class="fas fa-check"></i></div>
+                    </div>
+                    <div class="stat-card">
+                        <div>
+                            <div class="stat-num" id="count-danger" style="color: var(--danger);">0</div>
+                            <div class="stat-label">Risk / Unaccounted</div>
+                        </div>
+                        <div class="stat-icon" style="background: var(--danger-bg); color: var(--danger);"><i class="fas fa-exclamation"></i></div>
+                    </div>
+                </div>
+
+                <div class="card" style="flex: 1; min-height: 400px;">
+                    <div class="card-header">
+                        <div class="card-title"><i class="fas fa-map-marked-alt" style="color: var(--primary);"></i> Live Student Tracker</div>
+                        <span style="font-size: 12px; color: var(--text-sub);">Real-time GPS</span>
+                    </div>
+                    <div id="admin-map"></div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Broadcast Alert</div>
+                    </div>
+                    <div class="action-grid">
+                        <button class="action-btn btn-eq" onclick="triggerAlert('EARTHQUAKE')">
+                            <i class="fas fa-globe-americas" style="color:var(--warning)"></i> <strong>Earthquake</strong>
+                        </button>
+                        <button class="action-btn btn-fire" onclick="triggerAlert('FIRE')">
+                            <i class="fas fa-fire" style="color:var(--danger)"></i> <strong>Fire</strong>
+                        </button>
+                        <button class="action-btn btn-flood" onclick="triggerAlert('FLOOD')">
+                            <i class="fas fa-water" style="color:var(--info)"></i> <strong>Flood</strong>
+                        </button>
+                        <button class="action-btn btn-reset" onclick="triggerAlert('SAFE')">
+                            <i class="fas fa-check-circle" style="color:var(--success)"></i> <strong>Reset</strong>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="right-col">
+                <div class="card" style="border-top: 4px solid var(--danger); height: 35%;">
+                    <div class="card-header">
+                        <div class="card-title"><i class="fas fa-exclamation-triangle" style="color: var(--danger);"></i> Risk / Alerts</div>
+                    </div>
+                    <div class="list-container">
+                        <div class="list-scroll" id="list-danger">
+                            <div style="padding:20px; text-align:center; color:#ccc; font-size:13px;">No alerts yet</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card" style="height: 35%;">
+                    <div class="card-header">
+                        <div class="card-title"><i class="fas fa-clipboard-list" style="color: var(--success);"></i> Safe Roster</div>
+                    </div>
+                    <div class="list-container">
+                        <div class="list-scroll" id="list-safe"></div>
+                    </div>
+                </div>
+
+                <div class="card" style="flex: 1;">
+                    <div class="card-header">
+                        <div class="card-title">System Logs</div>
+                    </div>
+                    <div class="list-scroll" id="feed-logs" style="background: #f9fafb;"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const socket = io();
+        
+        // --- 1. ADMIN MAP SETUP ---
+        const KNHS_LOC = [7.100265815095807, 124.82402407212273];
+        const map = L.map('admin-map').setView(KNHS_LOC, 18);
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Esri' }).addTo(map);
+        L.marker(KNHS_LOC).addTo(map).bindPopup("<b>KNHS Command Center</b>").openPopup();
+
+        // Markers & Data
+        const studentMarkers = {}; 
+        const studentData = new Map(); 
+
+        // --- DOM ---
+        const countSafe = document.getElementById('count-safe');
+        const countDanger = document.getElementById('count-danger');
+        const listSafe = document.getElementById('list-safe');
+        const listDanger = document.getElementById('list-danger');
+        const feedLogs = document.getElementById('feed-logs');
+        const clock = document.getElementById('live-clock');
+
+        setInterval(() => { clock.innerText = new Date().toLocaleTimeString(); }, 1000);
+
+        // --- SOCKET LOGIC ---
+        socket.on('admin-dashboard-update', (data) => {
+            const { id, status, lat, lng } = data;
+            
+            studentData.set(id, status);
+            updateCounts();
+            updateLists(id, status);
+
+            if (lat && lng) {
+                let color = (status === 'DANGER' || status === 'RISK') ? '#ef4444' : '#10b981';
+                
+                const dotIcon = L.divIcon({
+                    className: 'custom-dot',
+                    html: `<div style="width:14px; height:14px; background:${color}; border:2px solid white; border-radius:50%; box-shadow:0 2px 5px rgba(0,0,0,0.5);"></div>`,
+                    iconSize: [14, 14]
+                });
+
+                if (studentMarkers[id]) {
+                    studentMarkers[id].setLatLng([lat, lng]);
+                    studentMarkers[id].setIcon(dotIcon);
+                    studentMarkers[id].bindPopup(`<b>Student: ${id}</b><br>Status: <span style="color:${color}; font-weight:bold;">${status}</span>`);
+                } else {
+                    studentMarkers[id] = L.marker([lat, lng], {icon: dotIcon}).addTo(map)
+                        .bindPopup(`<b>Student: ${id}</b><br>Status: <span style="color:${color}; font-weight:bold;">${status}</span>`);
+                }
+            }
+        });
+
+        // --- SMART SOS LOGIC ---
+        const DANGER_WORDS = ['help', 'trapped', 'blood', 'injured', 'broken', 'stuck', 'emergency', 'cant move', 'hurt', 'pain', 'masakit', 'tulong', 'dugo', 'nahimatay', 'nabali', 'hindi makagalaw'];
+
+        socket.on('admin-note-receive', (data) => {
+            const { id, message, timestamp } = data;
+            
+            const msgText = message.toLowerCase();
+            const isUrgent = DANGER_WORDS.some(word => msgText.includes(word));
+
+            studentData.set(id, 'RISK');
+            updateCounts();
+            
+            if(listDanger.innerHTML.includes('No alerts')) listDanger.innerHTML = '';
+            
+            const div = document.createElement('div');
+            if (isUrgent) {
+                div.className = 'feed-item urgent-item'; 
+            } else {
+                div.className = 'feed-item';
+                div.style.borderLeft = '4px solid var(--danger)';
+            }
+
+            const badgeHtml = isUrgent ? '<span class="urgent-badge">SOS</span>' : '';
+            
+            // --- CONFIRM BUTTON ONLY FOR SOS ---
+            let buttonHtml = '';
+            if (isUrgent) {
+                buttonHtml = `
+                <button class="btn-confirm" onclick="confirmRescue(this, '${id}')">
+                    <i class="fas fa-reply"></i> CONFIRM
+                </button>`;
+            }
+
+            div.innerHTML = `
+                <div class="feed-header" style="display:flex; justify-content:space-between; align-items:center;">
+                    <div><span style="color:var(--danger)">${id}</span> ${badgeHtml}</div>
+                    ${buttonHtml}
+                </div>
+                <div style="font-size:10px; color:#888; margin-top:2px;">${timestamp}</div>
+                <div class="feed-msg" style="margin-top:8px; font-weight:600;">"${message}"</div>
+            `;
+            
+            listDanger.prepend(div); 
+
+            if (studentMarkers[id]) {
+                const redIcon = L.divIcon({
+                    html: `<div style="width:16px; height:16px; background:#ef4444; border:2px solid white; border-radius:50%; animation:pulse-red 1s infinite;"></div>`,
+                    iconSize: [16, 16]
+                });
+                studentMarkers[id].setIcon(redIcon);
+            }
+        });
+
+        function confirmRescue(btnElement, studentId) {
+            if(confirm(`Notify Student ${studentId} that help is coming?`)) {
+                socket.emit('admin-reply', { 
+                    targetId: studentId, 
+                    message: "Admin has received your SOS. Rescue team is on the way." 
+                });
+
+                btnElement.innerHTML = '<i class="fas fa-check"></i> CONFIRMED';
+                btnElement.style.background = '#9ca3af'; 
+                btnElement.style.cursor = 'default';
+                btnElement.disabled = true;
+                btnElement.removeAttribute('onclick');
+            }
+        }
+
+        function updateCounts() {
+            let safe = 0;
+            let risk = 0;
+            studentData.forEach((status) => {
+                if (status === 'SAFE') safe++;
+                else risk++;
+            });
+            countSafe.innerText = safe;
+            countDanger.innerText = risk;
+        }
+
+        function updateLists(id, status) {
+            // SAFE LIST LOGIC
+            if (status === 'SAFE') {
+                let existingRow = document.getElementById('safe-row-' + id);
+                const timeStr = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}); // e.g. 10:30 AM
+                
+                if (!existingRow) {
+                    // Create new row with TIMESTAMP
+                    existingRow = document.createElement('div');
+                    existingRow.id = 'safe-row-' + id;
+                    existingRow.className = 'student-row';
+                    existingRow.innerHTML = `
+                        <div>
+                            <strong>${id}</strong>
+                            <div style="font-size:11px; color:#6b7280;">${timeStr}</div>
+                        </div>
+                        <span class="badge badge-safe">SAFE</span>
+                    `;
+                    listSafe.prepend(existingRow);
+                }
+                
+                // --- GREEN FLASH ANIMATION ---
+                existingRow.classList.remove('row-update-safe');
+                void existingRow.offsetWidth; 
+                existingRow.classList.add('row-update-safe');
+            } 
+            // ALERT LIST LOGIC
+            else if (status === 'DANGER') {
+                if(listDanger.innerHTML.includes('No alerts')) listDanger.innerHTML = '';
+                const div = document.createElement('div');
+                div.className = 'feed-item';
+                div.style.borderLeft = '4px solid var(--danger)';
+                // No Confirm Button here for regular danger status
+                div.innerHTML = `<div class="feed-header"><span style="color:var(--danger)">${id}</span><span>NOW</span></div><div class="feed-msg">Marked NOT SAFE</div>`;
+                listDanger.prepend(div);
+            }
+        }
+
+        function triggerAlert(type) {
+            let msg = "Proceed to safety.";
+            if(type === 'EARTHQUAKE') msg = "EARTHQUAKE! Duck, Cover, Hold!";
+            if(type === 'FIRE') msg = "FIRE ALARM! Evacuate immediately.";
+            if(type === 'FLOOD') msg = "FLOOD! Go to higher ground.";
+            if(type === 'SAFE') msg = "System Reset.";
+
+            if(confirm(`Broadcast ${type}?`)) {
+                socket.emit('broadcast-alert', { type: type, message: msg });
+                
+                if(type === 'SAFE') {
+                    // 1. Reset Map & Logic
+                    for(let id in studentMarkers) map.removeLayer(studentMarkers[id]);
+                    studentData.clear();
+                    updateCounts();
+                    
+                    // 2. MARK END OF EVENT
+                    const divider = document.createElement('div');
+                    divider.style.textAlign = 'center';
+                    divider.style.padding = '10px';
+                    divider.style.borderTop = '1px dashed #ccc';
+                    divider.style.margin = '10px 0';
+                    divider.style.color = '#888';
+                    divider.style.fontSize = '11px';
+                    divider.innerHTML = `--- EVENT ENDED (${new Date().toLocaleTimeString()}) ---`;
+                    
+                    if(!listDanger.innerHTML.includes('No alerts')) {
+                        listDanger.prepend(divider.cloneNode(true));
+                    }
+
+                    if(listSafe.children.length > 0) {
+                        listSafe.prepend(divider.cloneNode(true));
+                    }
+                }
+            }
+        }
+
+        socket.on('log-history', (history) => {
+            feedLogs.innerHTML = '';
+            history.forEach(log => addLog(log));
+        });
+        socket.on('update-logs', (log) => addLog(log));
+
+        function addLog(log) {
+            const color = log.type === 'SAFE' ? 'var(--success)' : 'var(--danger)';
+            const div = document.createElement('div');
+            div.className = 'log-row';
+            div.innerHTML = `<span>${log.time}</span><strong style="color:${color}">${log.type}</strong>`;
+            feedLogs.prepend(div);
+        }
+    </script>
+</body>
+</html>

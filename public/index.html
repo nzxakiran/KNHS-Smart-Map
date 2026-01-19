@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KNHS Disaster Alert - Login</title>
+    <style>
+        /* --- RESET & BASE --- */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #003366 0%, #00c6ff 100%); /* School Blue Gradient */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: #333;
+        }
+
+        /* --- LOGIN CARD --- */
+        .login-container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 2.5rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        .login-container:hover {
+            transform: translateY(-5px);
+        }
+
+        /* --- HEADER --- */
+        .login-header h2 {
+            margin-bottom: 10px;
+            color: #004494; /* Darker Blue */
+            font-weight: 700;
+        }
+        .login-header p {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 2rem;
+        }
+
+        /* --- FORM ELEMENTS --- */
+        .form-group {
+            margin-bottom: 1.2rem;
+            text-align: left;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #444;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e1e1;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        input:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+
+        /* --- BUTTON --- */
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        /* --- ERROR MESSAGE --- */
+        .error {
+            background: #ffe6e6;
+            color: #d93025;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            margin-top: 15px;
+            border: 1px solid #ffcccc;
+            display: none; /* Hidden by default */
+        }
+
+        /* --- FOOTER --- */
+        .footer {
+            margin-top: 20px;
+            font-size: 0.8rem;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+
+<div class="login-container">
+    <div class="login-header">
+        <h2>KNHS Alert System</h2>
+        <p>Disaster Response & Safety Portal</p>
+    </div>
+    
+    <form action="/auth" method="POST">
+        
+        <div class="form-group">
+            <label for="username">Username / ID</label>
+            <input type="text" id="username" name="username" placeholder="Enter 'admin' or ID" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" placeholder="••••••••">
+        </div>
+        
+        <button type="submit">Sign In</button>
+    </form>
+
+    <div id="error-msg" class="error">
+        Invalid credentials. Please try again.
+    </div>
+
+    <div class="footer">
+        © 2026 Kabacan National High School
+    </div>
+</div>
+
+<script>
+    // Logic to show error message if URL contains ?error=true
+    if (window.location.search.includes('error')) {
+        document.getElementById('error-msg').style.display = 'block';
+    }
+</script>
+
+</body>
+</html>

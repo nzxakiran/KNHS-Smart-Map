@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>KNHS | Student Safety</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --primary: #0f172a;
+            --accent: #3b82f6;
+            --danger: #ef4444;
+            --success: #10b981;
+            --bg: #f1f5f9;
+            --surface: #ffffff;
+            --text-main: #1e293b;
+            --text-sub: #64748b;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0; background-color: var(--bg);
+            color: var(--text-main);
+            height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        /* --- SIDEBAR --- */
+        #sidebar {
+            position: fixed; left: -280px; top: 0; bottom: 0; width: 280px;
+            background: white; z-index: 11000; transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            padding: 40px 24px; display: flex; flex-direction: column;
+        }
+        #sidebar.active { left: 0; box-shadow: 20px 0 50px rgba(0,0,0,0.1); }
+        .sidebar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 10999; display: none; }
+        .sidebar-overlay.active { display: block; }
+
+        .contact-item {
+            background: #f8fafc; padding: 12px; border-radius: 10px; 
+            margin-bottom: 8px; border: 1px solid #e2e8f0; display: flex; align-items: center; gap: 10px;
+        }
+
+        /* --- LOGIN MODAL --- */
+        #login-modal {
+            position: fixed; inset: 0; background: var(--primary);
+            z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 24px;
+        }
+        .login-box {
+            background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px);
+            padding: 40px 30px; border-radius: 24px; width: 100%; max-width: 400px;
+            text-align: center; border: 1px solid rgba(255,255,255,0.1);
+        }
+        .login-input {
+            width: 100%; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+            padding: 16px; border-radius: 12px; color: white; font-size: 16px; margin-bottom: 20px;
+        }
+        .btn-login {
+            width: 100%; background: var(--accent); color: white; border: none;
+            padding: 16px; border-radius: 12px; font-weight: 700; font-size: 16px;
+        }
+
+        /* --- HEADER --- */
+        header {
+            background: var(--surface); padding: 16px 20px;
+            display: flex; align-items: center; justify-content: space-between;
+            border-bottom: 1px solid #e2e8f0; z-index: 1001;
+        }
+        .app-logo { font-weight: 800; font-size: 18px; color: var(--primary); display: flex; align-items: center; gap: 12px; cursor: pointer; }
+        .status-dot { width: 8px; height: 8px; background: var(--success); border-radius: 50%; }
+
+        /* --- MAP & PIN --- */
+        #main-container { flex: 1; position: relative; display: flex; flex-direction: column; }
+        #map-container { flex: 1; width: 100%; z-index: 1; }
+        #map { height: 100%; width: 100%; }
+
+        .dest-pin { display: flex; justify-content: center; align-items: center; }
+        .pin-circle {
+            width: 45px; height: 45px; background: var(--danger);
+            border-radius: 50%; border: 4px solid white;
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.8);
+            display: flex; align-items: center; justify-content: center;
+            color: white; font-size: 20px;
+            animation: pulse-pin 1.2s infinite;
+        }
+        @keyframes pulse-pin { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+
+        /* --- ACTIONS --- */
+        .actions-tray {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            background: white; border-radius: 24px 24px 0 0;
+            padding: 24px 20px 30px 20px; z-index: 1002;
+            box-shadow: 0 -10px 25px rgba(0,0,0,0.05);
+        }
+
+        .alert-banner {
+            background: #fef2f2; border: 1px solid #fee2e2; padding: 12px 16px;
+            border-radius: 12px; margin: 10px; position: absolute; top: 0; left: 0; right: 0;
+            display: none; z-index: 1003;
+        }
+
+        #quick-responses { display: none; margin-bottom: 15px; }
+        .quick-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 8px;}
+        .btn-quick { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; font-size: 12px; font-weight: 600; cursor: pointer; }
+
+        .button-group { display: grid; grid-template-columns: 1fr 1.5fr; gap: 12px; }
+        .btn-action { border: none; border-radius: 16px; font-weight: 700; padding: 16px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+        .btn-safe { background: #f0fdf4; color: #15803d; }
+        .btn-danger { background: var(--danger); color: white; }
+
+        .msg-bar { margin-top: 15px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; display: flex; align-items: center; }
+        .msg-bar input { flex: 1; border: none; background: transparent; padding: 12px; outline: none; }
+        .btn-send { background: var(--primary); color: white; border: none; width: 32px; height: 32px; border-radius: 8px; margin-right: 5px; cursor: pointer; }
+
+        #toast-notification { position: fixed; top: -100px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; padding: 12px 24px; border-radius: 99px; z-index: 20000; transition: 0.5s; }
+    
+    /* --- NEW PERSISTENT ADMIN MODAL --- */
+#admin-reply-modal {
+    position: fixed; 
+    top: -300px; /* Hidden by default */
+    left: 50%; 
+    transform: translateX(-50%);
+    background: #1e293b; /* Dark Blue Theme */
+    color: white; 
+    width: 90%; 
+    max-width: 400px;
+    padding: 20px; 
+    border-radius: 16px; 
+    z-index: 20001; /* Above everything */
+    box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+    border: 1px solid rgba(255,255,255,0.1);
+    transition: top 0.6s cubic-bezier(0.19, 1, 0.22, 1); /* Smooth Drop Effect */
+}
+
+#admin-reply-modal.active {
+    top: 20px; /* Drops down to view */
+}
+
+.modal-header {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;
+}
+.modal-badge {
+    background: #3b82f6; padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase;
+}
+.btn-close {
+    background: rgba(255,255,255,0.2); border: none; color: white; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; font-size: 16px;
+}
+.time-stamp {
+    margin-top: 16px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 11px; color: #94a3b8; display: flex; justify-content: space-between;
+}
+    </style>
+</head>
+<body>
+
+    <div id="toast-notification"><span id="toast-msg"></span></div>
+
+    <div id="admin-reply-modal">
+        <div class="modal-header">
+            <span class="modal-badge">From Admin</span>
+            <button class="btn-close" onclick="closeAdminModal()">&times;</button>
+        </div>
+        <div style="font-size: 15px; line-height: 1.5; font-weight: 500;" id="admin-msg-content">
+        </div>
+        <div class="time-stamp">
+            <span>Received:</span>
+            <span id="admin-msg-time">--</span>
+        </div>
+    </div>
+
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar(false)"></div>
+    
+    <div id="sidebar">
+        <div style="margin-bottom: 30px;">
+            <h2 style="font-weight: 800; margin: 0;">Hello, <span id="sidebar-name" style="color: var(--accent);">Student</span></h2>
+            <p style="color: var(--text-sub); font-size: 13px;" id="sidebar-id-display">ID: Loading...</p>
+        </div>
+
+        <div style="margin-bottom: 24px;">
+            <p style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-sub); margin-bottom: 12px;">Emergency Contacts</p>
+            <div class="contact-item">
+                <i class="fas fa-phone" style="color: var(--success);"></i>
+                <div style="font-size: 13px;"><b>KNHS Clinic:</b> 0912-345-6789</div>
+            </div>
+            <div class="contact-item">
+                <i class="fas fa-shield-halved" style="color: var(--danger);"></i>
+                <div style="font-size: 13px;"><b>Barangay Help:</b> 911</div>
+            </div>
+        </div>
+
+        <button onclick="logoutUser()" style="margin-top: auto; border: none; background: #f1f5f9; color: var(--text-sub); padding: 14px; border-radius: 12px; font-weight: 600; cursor: pointer;">
+            <i class="fas fa-sign-out-alt"></i> Log Out
+        </button>
+    </div>
+
+    <div id="login-modal">
+        <div class="login-box">
+            <h2 style="color:white">KNHS Safety</h2>
+            <input type="text" id="student-id-input" class="login-input" placeholder="Enter Student ID">
+            <button class="btn-login" onclick="loginUser()">Join Network</button>
+        </div>
+    </div>
+
+    <header>
+        <div class="app-logo" onclick="toggleSidebar(true)">
+            <i class="fas fa-bars"></i> KNHS SAFE
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 12px;">
+            <div class="status-dot" id="conn-dot"></div> <span id="conn-text">LIVE</span>
+        </div>
+    </header>
+
+    <div id="main-container">
+        <div id="admin-banner" class="alert-banner">
+            <strong id="alert-title" style="color:#991b1b">EMERGENCY</strong>
+            <p id="admin-banner-text" style="font-size: 13px; color:#b91c1c; margin: 4px 0 0 0;"></p>
+        </div>
+        <div id="map-container"><div id="map"></div></div>
+        <div class="actions-tray">
+            <div id="quick-responses">
+                <span style="font-size:11px; font-weight:800; color:var(--text-sub)">QUICK RESPONSE</span>
+                <div class="quick-grid" id="quick-grid"></div>
+            </div>
+            <div class="button-group">
+                <button class="btn-action btn-safe" onclick="markAsSafe()"><i class="fas fa-check-circle"></i> I'm Safe</button>
+                <button class="btn-action btn-danger" onclick="markAsDanger()"><i class="fas fa-hand-paper"></i> I am not Safe</button>
+            </div>
+            <div class="msg-bar">
+                <input type="text" id="student-note" placeholder="Message Admin...">
+                <button class="btn-send" onclick="sendNote()"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <audio id="siren" loop src="https://www.soundjay.com/mechanical/sounds/smoke-detector-1.mp3"></audio>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+
+   <script>
+    let socket, map, userMarker, destMarker, routingControl;
+    let studentID = null;
+    let notificationAudio = new Audio('https://www.soundjay.com/buttons/sounds/button-3.mp3');
+
+    // FIX 1: Track the status globally so GPS doesn't reset it
+    let currentStatus = 'SAFE';
+
+    const LOCATIONS = {
+        'PRINCIPAL FRONT': [7.100589893149529, 124.82393056927546],
+        'MENDOZA COURT': [7.100077551009359, 124.82369094608939]
+    };
+
+    const QUICK_MSGS = {
+        'EARTHQUAKE': ['Trapped', 'Injured', 'Exit Blocked'],
+        'FIRE': ['Can\'t breathe', 'Stuck in room', 'Need medical'],
+        'FLOOD': ['Water rising', 'Stuck on roof', 'Can\'t swim'],
+        'DEFAULT': ['Need help', 'Injured']
+    };
+
+    window.onload = () => { initMap(); initSocket(); activateGPS(); checkLogin(); };
+
+    function initMap() {
+        map = L.map('map', { zoomControl: false, attributionControl: false }).setView([7.1002, 124.8240], 19);
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}').addTo(map);
+    }
+
+    function initSocket() {
+        if (typeof io !== 'undefined') {
+            socket = io();
+
+            socket.on('connect', () => {
+                updateStatus(true);
+                if (studentID) {
+                    socket.emit('register-student', studentID);
+                }
+            });
+
+            socket.on('disconnect', () => updateStatus(false));
+
+            socket.on('receive-reply', (data) => {
+                console.log("INCOMING MESSAGE:", data);
+                notificationAudio.currentTime = 0;
+                notificationAudio.play().catch(e => console.log("Audio autoplay blocked:", e));
+
+                const now = new Date();
+                const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+
+                document.getElementById('admin-msg-content').innerText = data.message;
+                document.getElementById('admin-msg-time').innerText = `${dateStr} • ${timeStr}`;
+                document.getElementById('admin-reply-modal').classList.add('active');
+            });
+
+            socket.on('receive-alert', handleAlert);
+        }
+    }
+
+    function closeAdminModal() {
+        document.getElementById('admin-reply-modal').classList.remove('active');
+        notificationAudio.pause();
+        notificationAudio.currentTime = 0;
+    }
+
+    async function checkLogin() {
+        try {
+            const response = await fetch('/api/me');
+            const data = await response.json();
+
+            if (data.name && data.id) {
+                studentID = data.id.toString().trim();
+
+                document.getElementById('login-modal').style.display = 'none';
+                document.getElementById('sidebar-id-display').innerText = "ID: " + studentID;
+                document.getElementById('sidebar-name').innerText = data.name.trim().split(' ')[0];
+                document.getElementById('conn-text').innerText = "LIVE: " + studentID;
+
+                if (socket) {
+                    socket.emit('register-student', studentID);
+                }
+            } else {
+                logoutUser();
+            }
+        } catch (error) {
+            console.error("Login Check Failed:", error);
+        }
+    }
+
+    function handleAlert(data) {
+        const siren = document.getElementById('siren');
+        const banner = document.getElementById('admin-banner');
+        const quickPanel = document.getElementById('quick-responses');
+        const quickGrid = document.getElementById('quick-grid');
+
+        if (data.type === 'SAFE' || data.type === 'CLEAR') {
+            banner.style.display = 'none';
+            quickPanel.style.display = 'none';
+            if (siren) { siren.pause(); siren.currentTime = 0; }
+            if (routingControl) { map.removeControl(routingControl); routingControl = null; }
+            if (destMarker) { map.removeLayer(destMarker); destMarker = null; }
+        } else {
+            banner.style.display = 'block';
+            document.getElementById('alert-title').innerText = data.type + " ALERT";
+            document.getElementById('admin-banner-text').innerText = data.message;
+
+            quickPanel.style.display = 'block';
+            quickGrid.innerHTML = '';
+            (QUICK_MSGS[data.type] || QUICK_MSGS['DEFAULT']).forEach(t => {
+                quickGrid.innerHTML += `<button class="btn-quick" onclick="sendQuickMsg('${t}')">${t}</button>`;
+            });
+
+            if (siren) siren.play().catch(() => { });
+
+            let zoneCoords = (data.type === 'FLOOD') ? LOCATIONS['MENDOZA COURT'] : LOCATIONS['PRINCIPAL FRONT'];
+            let destLatLng = L.latLng(zoneCoords[0], zoneCoords[1]);
+
+            const pinIcon = L.divIcon({
+                className: 'dest-pin',
+                html: `<div class="pin-circle"><i class="fas fa-person-running"></i></div>`,
+                iconSize: [45, 45],
+                iconAnchor: [22, 22]
+            });
+
+            if (destMarker) map.removeLayer(destMarker);
+            destMarker = L.marker(destLatLng, { icon: pinIcon }).addTo(map).bindPopup("<b>GO HERE NOW</b>").openPopup();
+
+            if (userMarker) {
+                drawPath(userMarker.getLatLng(), destLatLng);
+                const bounds = L.latLngBounds([userMarker.getLatLng(), destLatLng]);
+                map.fitBounds(bounds, { padding: [50, 50] });
+            }
+        }
+    }
+
+    function drawPath(start, end) {
+        if (routingControl) map.removeControl(routingControl);
+        routingControl = L.Routing.control({
+            waypoints: [start, end],
+            createMarker: () => null,
+            lineOptions: {
+                styles: [
+                    { color: 'white', weight: 8, opacity: 0.5 },
+                    { color: '#ef4444', weight: 6, opacity: 0.9 }
+                ]
+            },
+            show: false,
+            addWaypoints: false,
+            draggableWaypoints: false
+        }).addTo(map);
+    }
+
+    function toggleSidebar(show) {
+        document.getElementById('sidebar').classList.toggle('active', show);
+        document.getElementById('sidebar-overlay').classList.toggle('active', show);
+    }
+
+    function sendQuickMsg(text) {
+        markAsDanger();
+        if (socket) socket.emit('student-note', { id: studentID, message: `[QUICK SOS]: ${text}` });
+        showToast("Alert Sent!");
+    }
+
+    function markAsSafe() {
+        if (socket && studentID) {
+            // FIX 2: Ask for confirmation before resolving
+            if (!confirm("Are you sure you have received help and are now SAFE?")) return;
+
+            // FIX 3: Update global state to SAFE
+            currentStatus = 'SAFE';
+
+            socket.emit('student-status', {
+                id: studentID,
+                status: 'SAFE',
+                lat: userMarker?.getLatLng().lat,
+                lng: userMarker?.getLatLng().lng
+            });
+
+            const siren = document.getElementById('siren');
+            if (siren) { siren.pause(); siren.currentTime = 0; }
+
+            showToast("Status: Safe");
+        }
+    }
+
+    function markAsDanger() {
+        if (socket && studentID) {
+            // FIX 4: Update global state to DANGER
+            currentStatus = 'DANGER';
+
+            if (userMarker) {
+                const lat = userMarker.getLatLng().lat;
+                const lng = userMarker.getLatLng().lng;
+
+                socket.emit('student-status', {
+                    id: studentID,
+                    status: 'DANGER',
+                    lat: lat,
+                    lng: lng
+                });
+                showToast("SOS Sent! Location Shared.");
+            } else {
+                showToast("Acquiring GPS...");
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        const lat = pos.coords.latitude;
+                        const lng = pos.coords.longitude;
+
+                        if (!userMarker) {
+                            userMarker = L.circleMarker([lat, lng], { radius: 8, color: '#3b82f6', fillColor: 'white', fillOpacity: 1, weight: 3 }).addTo(map);
+                            map.setView([lat, lng], 19);
+                        }
+
+                        socket.emit('student-status', {
+                            id: studentID,
+                            status: 'DANGER',
+                            lat: lat,
+                            lng: lng
+                        });
+                        showToast("SOS Sent! Location Shared.");
+                    },
+                    (err) => {
+                        alert("⚠️ GPS Error: Please allow location access to use SOS features.");
+                    },
+                    { enableHighAccuracy: true }
+                );
+            }
+        }
+    }
+
+    function sendNote() {
+        const input = document.getElementById('student-note');
+        if (input.value.trim() && socket && studentID) {
+            socket.emit('student-note', { id: studentID, message: input.value });
+            input.value = '';
+            showToast("Sent");
+        }
+    }
+
+    function showToast(text) {
+        const toast = document.getElementById('toast-notification');
+        document.getElementById('toast-msg').innerText = text;
+        toast.style.top = "20px";
+        setTimeout(() => toast.style.top = "-100px", 4000);
+    }
+
+    function logoutUser() {
+        window.location.href = '/logout';
+    }
+
+    function activateGPS() {
+        if (navigator.geolocation) {
+            navigator.geolocation.watchPosition((pos) => {
+                const lat = pos.coords.latitude, lng = pos.coords.longitude;
+                if (!userMarker) {
+                    userMarker = L.circleMarker([lat, lng], { radius: 8, color: '#3b82f6', fillColor: 'white', fillOpacity: 1, weight: 3 }).addTo(map);
+                    map.setView([lat, lng], 19);
+                } else userMarker.setLatLng([lat, lng]);
+
+                // FIX 5: ALWAYS send the currentStatus with the GPS update
+                // This prevents the admin map from defaulting back to 'SAFE'
+                if (socket && studentID) {
+                    socket.emit('student-status', {
+                        id: studentID,
+                        lat: lat,
+                        lng: lng,
+                        status: currentStatus
+                    });
+                }
+            }, null, { enableHighAccuracy: true });
+        }
+    }
+
+    function updateStatus(online) {
+        document.getElementById('conn-dot').style.background = online ? 'var(--success)' : 'var(--danger)';
+        document.getElementById('conn-text').innerText = online && studentID ? "LIVE: " + studentID : "OFFLINE";
+    }
+</script>
+</body>
+</html>

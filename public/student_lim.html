@@ -246,6 +246,10 @@
    <script>
     let socket, map, userMarker, destMarker, routingControl;
     let studentID = null;
+    let notificationAudio = new Audio('https://www.soundjay.com/buttons/sounds/button-3.mp3');
+
+    // FIX 1: Track the status globally so GPS doesn't reset it
+    let currentStatus = 'SAFE';
 
     const LOCATIONS = {
         'PRINCIPAL FRONT': [7.100589893149529, 124.82393056927546],
@@ -267,47 +271,41 @@
     }
 
     function initSocket() {
-            if (typeof io !== 'undefined') {
-                socket = io();
+        if (typeof io !== 'undefined') {
+            socket = io();
 
-                // 1. Connection Logic
-                socket.on('connect', () => {
-                    updateStatus(true);
-                    if (studentID) {
-                        socket.emit('register-student', studentID);
-                    }
-                });
+            socket.on('connect', () => {
+                updateStatus(true);
+                if (studentID) {
+                    socket.emit('register-student', studentID);
+                }
+            });
 
-                socket.on('disconnect', () => updateStatus(false));
+            socket.on('disconnect', () => updateStatus(false));
 
-                // 2. NEW: Handle Admin Reply with Persistent Modal
-                socket.on('receive-reply', (data) => {
-                    console.log("INCOMING MESSAGE:", data);
+            socket.on('receive-reply', (data) => {
+                console.log("INCOMING MESSAGE:", data);
+                notificationAudio.currentTime = 0;
+                notificationAudio.play().catch(e => console.log("Audio autoplay blocked:", e));
 
-                    // A. Play Sound
-                    const audio = new Audio('https://www.soundjay.com/buttons/sounds/button-3.mp3');
-                    audio.play().catch(e => console.log("Audio autoplay blocked:", e));
+                const now = new Date();
+                const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 
-                    // B. Get Current Time & Date
-                    const now = new Date();
-                    const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-                    const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                document.getElementById('admin-msg-content').innerText = data.message;
+                document.getElementById('admin-msg-time').innerText = `${dateStr} • ${timeStr}`;
+                document.getElementById('admin-reply-modal').classList.add('active');
+            });
 
-                    // C. Populate and Show Modal
-                    document.getElementById('admin-msg-content').innerText = data.message;
-                    document.getElementById('admin-msg-time').innerText = `${dateStr} • ${timeStr}`;
-
-                    document.getElementById('admin-reply-modal').classList.add('active');
-                });
-
-                socket.on('receive-alert', handleAlert);
-            }
+            socket.on('receive-alert', handleAlert);
         }
+    }
 
-        // Function to close the modal
-        function closeAdminModal() {
-            document.getElementById('admin-reply-modal').classList.remove('active');
-        }
+    function closeAdminModal() {
+        document.getElementById('admin-reply-modal').classList.remove('active');
+        notificationAudio.pause();
+        notificationAudio.currentTime = 0;
+    }
 
     async function checkLogin() {
         try {
@@ -315,21 +313,15 @@
             const data = await response.json();
 
             if (data.name && data.id) {
-                // FORCE TRIM: Remove any accidental spaces
                 studentID = data.id.toString().trim();
 
-                // Update UI
                 document.getElementById('login-modal').style.display = 'none';
                 document.getElementById('sidebar-id-display').innerText = "ID: " + studentID;
                 document.getElementById('sidebar-name').innerText = data.name.trim().split(' ')[0];
-
-                // Update Header to show we are connected as THIS ID
                 document.getElementById('conn-text').innerText = "LIVE: " + studentID;
 
-                // CRITICAL: Join the Room
                 if (socket) {
                     socket.emit('register-student', studentID);
-                    console.log("Initially joined room:", studentID);
                 }
             } else {
                 logoutUser();
@@ -415,9 +407,19 @@
 
     function markAsSafe() {
         if (socket && studentID) {
-            socket.emit('student-status', { id: studentID, status: 'SAFE', lat: userMarker?.getLatLng().lat, lng: userMarker?.getLatLng().lng });
+            // FIX 2: Ask for confirmation before resolving
+            if (!confirm("Are you sure you have received help and are now SAFE?")) return;
 
-            // STOP AUDIO
+            // FIX 3: Update global state to SAFE
+            currentStatus = 'SAFE';
+
+            socket.emit('student-status', {
+                id: studentID,
+                status: 'SAFE',
+                lat: userMarker?.getLatLng().lat,
+                lng: userMarker?.getLatLng().lng
+            });
+
             const siren = document.getElementById('siren');
             if (siren) { siren.pause(); siren.currentTime = 0; }
 
@@ -427,8 +429,46 @@
 
     function markAsDanger() {
         if (socket && studentID) {
-            socket.emit('student-status', { id: studentID, status: 'DANGER', lat: userMarker?.getLatLng().lat, lng: userMarker?.getLatLng().lng });
-            showToast("SOS Sent!");
+            // FIX 4: Update global state to DANGER
+            currentStatus = 'DANGER';
+
+            if (userMarker) {
+                const lat = userMarker.getLatLng().lat;
+                const lng = userMarker.getLatLng().lng;
+
+                socket.emit('student-status', {
+                    id: studentID,
+                    status: 'DANGER',
+                    lat: lat,
+                    lng: lng
+                });
+                showToast("SOS Sent! Location Shared.");
+            } else {
+                showToast("Acquiring GPS...");
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        const lat = pos.coords.latitude;
+                        const lng = pos.coords.longitude;
+
+                        if (!userMarker) {
+                            userMarker = L.circleMarker([lat, lng], { radius: 8, color: '#3b82f6', fillColor: 'white', fillOpacity: 1, weight: 3 }).addTo(map);
+                            map.setView([lat, lng], 19);
+                        }
+
+                        socket.emit('student-status', {
+                            id: studentID,
+                            status: 'DANGER',
+                            lat: lat,
+                            lng: lng
+                        });
+                        showToast("SOS Sent! Location Shared.");
+                    },
+                    (err) => {
+                        alert("⚠️ GPS Error: Please allow location access to use SOS features.");
+                    },
+                    { enableHighAccuracy: true }
+                );
+            }
         }
     }
 
@@ -461,7 +501,16 @@
                     map.setView([lat, lng], 19);
                 } else userMarker.setLatLng([lat, lng]);
 
-                if (socket && studentID) socket.emit('student-status', { id: studentID, lat: lat, lng: lng });
+                // FIX 5: ALWAYS send the currentStatus with the GPS update
+                // This prevents the admin map from defaulting back to 'SAFE'
+                if (socket && studentID) {
+                    socket.emit('student-status', {
+                        id: studentID,
+                        lat: lat,
+                        lng: lng,
+                        status: currentStatus
+                    });
+                }
             }, null, { enableHighAccuracy: true });
         }
     }

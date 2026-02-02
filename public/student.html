@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>KNHS | Student Safety</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --primary: #0f172a;
+            --accent: #3b82f6;
+            --danger: #ef4444;
+            --success: #10b981;
+            --bg: #f1f5f9;
+            --surface: #ffffff;
+            --text-main: #1e293b;
+            --text-sub: #64748b;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            background-color: var(--bg);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* --- ENHANCED SIDEBAR & GLASSMORPHISM --- */
+        #sidebar {
+            background: linear-gradient(180deg, #0f172a 0%, #f8fafc 100%);
+        }
+
+        .sidebar-header {
+            background: var(--primary);
+            padding: 30px 24px;
+            margin: -40px -24px 20px -24px;
+            color: #0f172a;
+            border-radius: 0 0 20px 20px;
+        }
+
+        .guideline-section {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .guideline-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 12px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        .guideline-card:hover {
+            transform: translateY(-2px);
+            background: rgba(255, 255, 255, 0.9);
+            border-color: var(--accent);
+        }
+
+        .guideline-card i {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .guide-desc {
+            font-size: 12px;
+            line-height: 1.5;
+            color: var(--text-sub);
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease;
+        }
+
+        .guideline-card.active .guide-desc {
+            max-height: 200px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .sidebar-label {
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            color: var(--text-sub);
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+            display: block;
+        }
+        #sidebar {
+            position: fixed;
+            left: -280px;
+            top: 0;
+            bottom: 0;
+            width: 280px;
+            background: white;
+            z-index: 11000;
+            transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            padding: 40px 24px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #sidebar.active {
+            left: 0;
+            box-shadow: 20px 0 50px rgba(0, 0, 0, 0.1);
+        }
+
+        .sidebar-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 10999;
+            display: none;
+        }
+
+        .sidebar-overlay.active {
+            display: block;
+        }
+
+        .contact-item {
+            background: #f8fafc;
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            border: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* --- LOGIN MODAL --- */
+        #login-modal {
+            position: fixed;
+            inset: 0;
+            background: var(--primary);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .login-box {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            padding: 40px 30px;
+            border-radius: 24px;
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .login-input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 16px;
+            border-radius: 12px;
+            color: white;
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+
+        .btn-login {
+            width: 100%;
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 16px;
+        }
+
+        /* --- HEADER --- */
+        header {
+            background: var(--surface);
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #e2e8f0;
+            z-index: 1001;
+        }
+
+        .app-logo {
+            font-weight: 800;
+            font-size: 18px;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--success);
+            border-radius: 50%;
+        }
+
+        /* --- MAP & PIN --- */
+        #main-container {
+            flex: 1;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #map-container {
+            flex: 1;
+            width: 100%;
+            z-index: 1;
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+
+        .dest-pin {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .pin-circle {
+            width: 45px;
+            height: 45px;
+            background: var(--danger);
+            border-radius: 50%;
+            border: 4px solid white;
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+            animation: pulse-pin 1.2s infinite;
+        }
+
+        @keyframes pulse-pin {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.1);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        /* --- ACTIONS --- */
+        .actions-tray {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-radius: 24px 24px 0 0;
+            padding: 24px 20px 30px 20px;
+            z-index: 1002;
+            box-shadow: 0 -10px 25px rgba(0, 0, 0, 0.05);
+        }
+
+        .alert-banner {
+            background: #fef2f2;
+            border: 1px solid #fee2e2;
+            padding: 12px 16px;
+            border-radius: 12px;
+            margin: 10px;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            display: none;
+            z-index: 1003;
+        }
+
+        #quick-responses {
+            display: none;
+            margin-bottom: 15px;
+        }
+
+        .quick-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .btn-quick {
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1.5fr;
+            gap: 12px;
+        }
+
+        .btn-action {
+            border: none;
+            border-radius: 16px;
+            font-weight: 700;
+            padding: 16px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-safe {
+            background: #f0fdf4;
+            color: #15803d;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .msg-bar {
+            margin-top: 15px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+        }
+
+        .msg-bar input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            padding: 12px;
+            outline: none;
+        }
+
+        .btn-send {
+            background: var(--primary);
+            color: white;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            margin-right: 5px;
+            cursor: pointer;
+        }
+
+        #toast-notification {
+            position: fixed;
+            top: -100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--primary);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 99px;
+            z-index: 20000;
+            transition: 0.5s;
+        }
+
+        /* --- PERSISTENT ADMIN MODAL --- */
+        #admin-reply-modal {
+            position: fixed;
+            top: -400px;
+            /* Hidden by default */
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e293b;
+            /* Dark Blue Theme */
+            color: white;
+            width: 90%;
+            max-width: 400px;
+            padding: 20px;
+            border-radius: 16px;
+            z-index: 20001;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: top 0.6s cubic-bezier(0.19, 1, 0.22, 1);
+        }
+
+        #admin-reply-modal.active {
+            top: 20px;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .modal-badge {
+            background: #3b82f6;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .btn-close {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .time-stamp {
+            margin-top: 16px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 11px;
+            color: #94a3b8;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* --- SIDEBAR USER CARD DESIGN --- */
+        .sidebar-user-card {
+            background: rgba(15, 23, 42, 0.04); /* Very light navy */
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            border-radius: 20px;
+            padding: 24px 20px;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar-user-card:hover {
+            background: rgba(59, 130, 246, 0.05); /* Light blue tint on hover */
+            border-color: var(--accent);
+        }
+
+        .user-avatar {
+            font-size: 42px;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            filter: drop-shadow(0 4px 6px rgba(59, 130, 246, 0.2));
+        }
+
+        .user-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .welcome-text {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-sub);
+            margin-bottom: 2px;
+        }
+
+        #sidebar-name {
+            font-weight: 800;
+            margin: 0;
+            font-size: 18px;
+            color: var(--primary);
+            line-height: 1.2;
+        }
+
+        #sidebar-id-display {
+            color: var(--accent);
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 4px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        #sidebar-id-display i {
+            font-size: 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="toast-notification"><span id="toast-msg"></span></div>
+
+    <div id="admin-reply-modal">
+        <div class="modal-header">
+            <span class="modal-badge">New Message</span>
+            <button class="btn-close" onclick="closeAdminModal()">&times;</button>
+        </div>
+        <div style="font-size: 15px; line-height: 1.5; font-weight: 500;" id="admin-msg-content">
+        </div>
+        <div class="time-stamp">
+            <span>Received:</span>
+            <span id="admin-msg-time">--</span>
+        </div>
+    </div>
+
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar(false)"></div>
+
+    <div id="sidebar">
+        <div class="sidebar-user-card">
+            <div class="user-avatar">
+                <i class="fas fa-user-circle"></i>
+            </div>
+            <div class="user-info">
+                <span class="welcome-text">Hello,</span>
+                <h2 id="sidebar-name">Student</h2>
+                <p id="sidebar-id-display"><i class="fas fa-id-badge"></i> ID: Loading...</p>
+            </div>
+        </div>
+
+        <div style="flex: 1; overflow-y: auto; padding-right: 5px; margin-top: 10px;">
+            <span class="sidebar-label">Disaster Guidelines</span>
+            <div class="guideline-section">
+                <div class="guideline-card" onclick="this.classList.toggle('active')">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <i class="fas fa-house-crack" style="background: #fff7ed; color: #c2410c;"></i>
+                        <b style="font-size: 14px;">Earthquake</b>
+                    </div>
+                    <div class="guide-desc">
+                        <b>DROP, COVER, HOLD.</b> Stay away from glass and heavy furniture. Move to the Principal Front safe zone if instructed.
+                    </div>
+                </div>
+
+                <div class="guideline-card" onclick="this.classList.toggle('active')">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <i class="fas fa-fire" style="background: #fef2f2; color: #b91c1c;"></i>
+                        <b style="font-size: 14px;">Fire</b>
+                    </div>
+                    <div class="guide-desc">
+                        <b>STOP, DROP, ROLL.</b> Cover your nose with a damp cloth. Exit via the nearest staircase. Head to the Mendoza or Tejada Court.
+                    </div>
+                </div>
+
+                <div class="guideline-card" onclick="this.classList.toggle('active')">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <i class="fas fa-water" style="background: #eff6ff; color: #1d4ed8;"></i>
+                        <b style="font-size: 14px;">Flood</b>
+                    </div>
+                    <div class="guide-desc">
+                        <b>MOVE TO HIGH GROUND.</b> Avoid walking through flowing water. Stay away from electrical outlets and downed power lines.
+                    </div>
+                </div>
+            </div>
+
+            <span class="sidebar-label" style="margin-top: 24px;">Quick Contacts</span>
+            <div class="contact-item">
+                <i class="fas fa-phone" style="color: var(--success);"></i>
+                <div style="font-size: 13px;"><b>KNHS Clinic:</b> 0912-345-6789</div>
+            </div>
+            <div class="contact-item">
+                <i class="fas fa-shield-halved" style="color: var(--danger);"></i>
+                <div style="font-size: 13px;"><b>Barangay Help:</b> 911</div>
+            </div>
+        </div>
+
+        <button onclick="logoutUser()"
+            style="margin-top: 20px; border: none; background: #fee2e2; color: #b91c1c; padding: 14px; border-radius: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;">
+            <i class="fas fa-power-off"></i> Secure Logout
+        </button>
+    </div>
+
+    <div id="login-modal">
+        <div class="login-box">
+            <h2 style="color:white">KNHS Safety</h2>
+            <input type="text" id="student-id-input" class="login-input" placeholder="Enter Student ID">
+            <button class="btn-login" onclick="loginUser()">Join Network</button>
+        </div>
+    </div>
+
+    <header>
+        <div class="app-logo" onclick="toggleSidebar(true)">
+            <i class="fas fa-bars"></i> KNHS SAFE
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 12px;">
+            <div class="status-dot" id="conn-dot"></div> <span id="conn-text">LIVE</span>
+        </div>
+    </header>
+
+    <div id="main-container">
+        <div id="admin-banner" class="alert-banner">
+            <strong id="alert-title" style="color:#991b1b">EMERGENCY</strong>
+            <p id="admin-banner-text" style="font-size: 13px; color:#b91c1c; margin: 4px 0 0 0;"></p>
+        </div>
+        <div id="map-container">
+            <div id="map"></div>
+        </div>
+        <div class="actions-tray">
+            <div id="quick-responses">
+                <span style="font-size:11px; font-weight:800; color:var(--text-sub)">QUICK RESPONSE</span>
+                <div class="quick-grid" id="quick-grid"></div>
+            </div>
+            <div class="button-group">
+                <button class="btn-action btn-safe" onclick="markAsSafe()"><i class="fas fa-check-circle"></i> I'm
+                    Safe</button>
+                <button class="btn-action btn-danger" onclick="markAsDanger()"><i class="fas fa-hand-paper"></i> I am
+                    not Safe</button>
+            </div>
+            <div class="msg-bar">
+                <input type="text" id="student-note" placeholder="Message Admin...">
+                <button class="btn-send" onclick="sendNote()"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <audio id="siren" loop src="https://image2url.com/r2/default/audio/1770035245086-6d368099-59b3-4f94-9f42-a06ce04c585a.mp3"></audio>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+
+    <script>
+        let socket, map, userMarker, routingControl;
+        let destMarkers = [];
+        let studentID = null;
+        let notificationAudio = new Audio('https://image2url.com/r2/default/audio/1770035478181-9daca647-30be-478d-bef0-2700b5dfcbdd.mp3');
+        let hasAskedPermission = false; // PREVENTS REPEATED POPUPS
+
+        let currentStatus = '--';
+
+        const LOCATIONS = {
+            'PRINCIPAL FRONT': [7.100589893149529, 124.82393056927546],
+            'MENDOZA COURT': [7.100077551009359, 124.82369094608939],
+            'TEJADA COURT': [7.1001461901808565, 124.82430112059413]
+        };
+
+        const DISASTER_ZONES = {
+            'EARTHQUAKE': ['PRINCIPAL FRONT'],
+            'FIRE': ['PRINCIPAL FRONT', 'MENDOZA COURT', 'TEJADA COURT'],
+            'FLOOD': ['MENDOZA COURT', 'TEJADA COURT']
+        };
+
+        const QUICK_MSGS = {
+            'EARTHQUAKE': ['Trapped', 'Injured', 'Exit Blocked'],
+            'FIRE': ['Can not breathe', 'Stuck in room', 'Need medical'],
+            'FLOOD': ['Water rising', 'Stuck on roof', 'Can not swim'],
+            'DEFAULT': ['Need help', 'Injured']
+        };
+
+        // Helper for Push Keys
+        function urlBase64ToUint8Array(base64String) {
+            const padding = '='.repeat((4 - base64String.length % 4) % 4);
+            const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+            const rawData = window.atob(base64);
+            const outputArray = new Uint8Array(rawData.length);
+            for (let i = 0; i < rawData.length; ++i) {
+                outputArray[i] = rawData.charCodeAt(i);
+            }
+            return outputArray;
+        }
+
+        window.onload = () => {
+            initMap();
+            initSocket();
+            activateGPS();
+            checkLogin();
+
+            // Register SW silently on load
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(() => console.log('SW Ready'))
+                    .catch(err => console.log('SW Fail:', err));
+            }
+
+            setInterval(() => {
+                // Heartbeat: Silent Check (No Toasts)
+                checkLogin(true);
+            }, 30000);
+        };
+
+        // UPDATED: Push Registration (Silent if already subscribed)
+        async function subscribeToPush() {
+            if ('serviceWorker' in navigator) {
+                try {
+                    const register = await navigator.serviceWorker.ready;
+
+                    // Check if already subscribed
+                    const existingSub = await register.pushManager.getSubscription();
+                    if (existingSub) {
+                        console.log("Already subscribed to push.");
+                        return; // EXIT HERE to avoid spamming "Success"
+                    }
+
+                    // Get Key & Subscribe
+                    const response = await fetch('/api/vapid-key');
+                    const json = await response.json();
+                    const publicKey = json.publicKey;
+
+                    if (publicKey) {
+                        const subscription = await register.pushManager.subscribe({
+                            userVisibleOnly: true,
+                            applicationServerKey: urlBase64ToUint8Array(publicKey)
+                        });
+
+                        await fetch('/subscribe', {
+                            method: 'POST',
+                            body: JSON.stringify(subscription),
+                            headers: { 'content-type': 'application/json' }
+                        });
+                        showToast("Emergency Alerts Active ✅");
+                    }
+                } catch (err) {
+                    console.error('Push Setup Error:', err);
+                }
+            }
+        }
+
+        function initMap() {
+            map = L.map('map', { zoomControl: false, attributionControl: false }).setView([7.1002, 124.8240], 19);
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}').addTo(map);
+        }
+
+        function initSocket() {
+            if (typeof io !== 'undefined') {
+                socket = io();
+
+                socket.on('connect', () => {
+                    updateStatus(true);
+                    if (studentID) socket.emit('register-student', studentID);
+                });
+
+                socket.on('disconnect', () => updateStatus(false));
+
+                socket.on('receive-reply', (data) => {
+                    notificationAudio.currentTime = 0;
+                    notificationAudio.play().catch(e => console.log("Audio block:", e));
+
+                    // Only show system notification if app is in background
+                    if (document.hidden && Notification.permission === 'granted') {
+                        navigator.serviceWorker.ready.then(reg => {
+                            reg.showNotification("New Admin Message", {
+                                body: data.message,
+                                icon: 'https://cdn-icons-png.flaticon.com/512/10303/10303033.png'
+                            });
+                        });
+                    }
+
+                    const now = new Date();
+                    const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                    const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+
+                    document.getElementById('admin-msg-content').innerText = data.message;
+                    document.getElementById('admin-msg-time').innerText = `${dateStr} • ${timeStr}`;
+                    document.getElementById('admin-reply-modal').classList.add('active');
+                });
+
+                socket.on('receive-alert', handleAlert);
+            }
+        }
+
+        function closeAdminModal() {
+            document.getElementById('admin-reply-modal').classList.remove('active');
+            notificationAudio.pause();
+            notificationAudio.currentTime = 0;
+        }
+
+        async function checkLogin(isHeartbeat = false) {
+            try {
+                const response = await fetch('/api/me');
+                const data = await response.json();
+                if (data.name && data.id) {
+                    studentID = data.id.toString().trim();
+                    if (!isHeartbeat) { // Only do UI stuff on first load
+                        document.getElementById('login-modal').style.display = 'none';
+                        document.getElementById('sidebar-id-display').innerText = "ID: " + studentID;
+                        document.getElementById('sidebar-name').innerText = data.name.trim().split(' ')[0];
+                        document.getElementById('conn-text').innerText = "LIVE: " + studentID;
+
+                        // Ask for permission ONCE per session
+                        if (!hasAskedPermission) {
+                            hasAskedPermission = true;
+                            if (Notification.permission !== 'granted') {
+                                Notification.requestPermission().then(p => {
+                                    if (p === 'granted') subscribeToPush();
+                                });
+                            } else {
+                                subscribeToPush();
+                            }
+                        }
+                    }
+                    if (socket) socket.emit('register-student', studentID);
+                } else {
+                    if (!isHeartbeat) logoutUser();
+                }
+            } catch (error) { console.error("Login Check Failed:", error); }
+        }
+
+        function findNearestZone(allowedZones) {
+            if (!userMarker) return { nearest: LOCATIONS[allowedZones[0]], all: allowedZones };
+            const userLat = userMarker.getLatLng().lat;
+            const userLng = userMarker.getLatLng().lng;
+            let nearestCoords = null;
+            let minDist = Infinity;
+
+            allowedZones.forEach(zoneKey => {
+                const [zLat, zLng] = LOCATIONS[zoneKey];
+                const dist = Math.sqrt(Math.pow(zLat - userLat, 2) + Math.pow(zLng - userLng, 2));
+                if (dist < minDist) { minDist = dist; nearestCoords = LOCATIONS[zoneKey]; }
+            });
+            return nearestCoords;
+        }
+
+        function handleAlert(data) {
+                const siren = document.getElementById('siren');
+                const banner = document.getElementById('admin-banner');
+                const quickPanel = document.getElementById('quick-responses');
+                const quickGrid = document.getElementById('quick-grid');
+
+                if (data.type === 'SAFE' || data.type === 'CLEAR') {
+                    banner.style.display = 'none';
+                    quickPanel.style.display = 'none';
+                    if (siren) { siren.pause(); siren.currentTime = 0; }
+                    if (routingControl) { map.removeControl(routingControl); routingControl = null; }
+                    destMarkers.forEach(marker => map.removeLayer(marker));
+                    destMarkers = [];
+                } else {
+                    banner.style.display = 'block';
+                    document.getElementById('alert-title').innerText = data.type + " ALERT";
+                    document.getElementById('admin-banner-text').innerText = data.message;
+
+                    quickPanel.style.display = 'block';
+                    quickGrid.innerHTML = '';
+                    (QUICK_MSGS[data.type] || QUICK_MSGS['DEFAULT']).forEach(t => {
+                        quickGrid.innerHTML += `<button class="btn-quick" onclick="sendQuickMsg('${t}')">${t}</button>`;
+                    });
+
+                    // --- CHANGED: AGGRESSIVE AUDIO PLAY ---
+                    if (siren) {
+                        siren.volume = 1.0; // Force Max Volume
+                        siren.currentTime = 0;
+
+                        // Attempt immediate play
+                        const playPromise = siren.play();
+
+                        if (playPromise !== undefined) {
+                            playPromise.catch(error => {
+                                console.log("Audio blocked. Waiting for user interaction...");
+                                // If blocked, wait for the FIRST click anywhere to start the siren
+                                document.body.addEventListener('click', () => {
+                                    siren.play();
+                                }, { once: true });
+                            });
+                        }
+                    }
+
+                    // Render Zones
+                    destMarkers.forEach(marker => map.removeLayer(marker));
+                    destMarkers = [];
+                    const allowedZones = DISASTER_ZONES[data.type] || ['PRINCIPAL FRONT'];
+
+                    allowedZones.forEach(zoneName => {
+                        const coords = LOCATIONS[zoneName];
+                        const pinIcon = L.divIcon({
+                            className: 'dest-pin',
+                            html: `<div class="pin-circle"><i class="fas fa-person-running"></i></div>`,
+                            iconSize: [45, 45],
+                            iconAnchor: [22, 22]
+                        });
+                        const marker = L.marker(coords, { icon: pinIcon }).addTo(map).bindPopup(`<b>SAFE ZONE: ${zoneName}</b>`);
+                        destMarkers.push(marker);
+                    });
+
+                    let nearestCoords = findNearestZone(allowedZones);
+                    let destLatLng = L.latLng(nearestCoords[0], nearestCoords[1]);
+
+                    if (userMarker) {
+                        drawPath(userMarker.getLatLng(), destLatLng);
+                        const bounds = L.latLngBounds([userMarker.getLatLng(), destLatLng]);
+                        map.fitBounds(bounds, { padding: [50, 50] });
+                    }
+                }
+            }
+
+        function drawPath(start, end) {
+            if (routingControl) map.removeControl(routingControl);
+            routingControl = L.Routing.control({
+                waypoints: [start, end],
+                createMarker: () => null,
+                lineOptions: {
+                    styles: [
+                        { color: 'white', weight: 8, opacity: 0.5 },
+                        { color: '#ef4444', weight: 6, opacity: 0.9 }
+                    ]
+                },
+                show: false,
+                addWaypoints: false,
+                draggableWaypoints: false
+            }).addTo(map);
+        }
+
+        function toggleSidebar(show) {
+            document.getElementById('sidebar').classList.toggle('active', show);
+            document.getElementById('sidebar-overlay').classList.toggle('active', show);
+        }
+
+        function sendQuickMsg(text) {
+            markAsDanger();
+            if (socket) socket.emit('student-note', { id: studentID, message: `[QUICK SOS]: ${text}` });
+            showToast("Alert Sent!");
+        }
+
+        function markAsSafe() {
+            if (socket && studentID) {
+                if (!confirm("Are you sure you have received help and are now SAFE?")) return;
+                currentStatus = 'SAFE';
+                socket.emit('student-status', { id: studentID, status: 'SAFE', lat: userMarker?.getLatLng().lat, lng: userMarker?.getLatLng().lng });
+                const siren = document.getElementById('siren');
+                if (siren) { siren.pause(); siren.currentTime = 0; }
+                showToast("Status: Safe");
+            }
+        }
+
+        function markAsDanger() {
+            if (socket && studentID) {
+                currentStatus = 'DANGER';
+                if (userMarker) {
+                    const lat = userMarker.getLatLng().lat;
+                    const lng = userMarker.getLatLng().lng;
+                    socket.emit('student-status', { id: studentID, status: 'DANGER', lat: lat, lng: lng });
+                    showToast("SOS Sent! Location Shared.");
+                } else {
+                    showToast("Acquiring GPS...");
+                    navigator.geolocation.getCurrentPosition(
+                        (pos) => {
+                            const lat = pos.coords.latitude;
+                            const lng = pos.coords.longitude;
+                            if (!userMarker) {
+                                userMarker = L.circleMarker([lat, lng], { radius: 8, color: '#3b82f6', fillColor: 'white', fillOpacity: 1, weight: 3 }).addTo(map);
+                                map.setView([lat, lng], 19);
+                            }
+                            socket.emit('student-status', { id: studentID, status: 'DANGER', lat: lat, lng: lng });
+                            showToast("SOS Sent! Location Shared.");
+                        },
+                        (err) => { alert("⚠️ GPS Error: Please allow location access."); },
+                        { enableHighAccuracy: true }
+                    );
+                }
+            }
+        }
+
+        function sendNote() {
+            const input = document.getElementById('student-note');
+            if (input.value.trim() && socket && studentID) {
+                socket.emit('student-note', { id: studentID, message: input.value });
+                input.value = '';
+                showToast("Sent");
+            }
+        }
+
+        function showToast(text) {
+            const toast = document.getElementById('toast-notification');
+            document.getElementById('toast-msg').innerText = text;
+            toast.style.top = "20px";
+            setTimeout(() => toast.style.top = "-100px", 4000);
+        }
+
+        function logoutUser() {
+            window.location.href = '/logout';
+        }
+
+        function activateGPS() {
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition((pos) => {
+                    const lat = pos.coords.latitude, lng = pos.coords.longitude;
+                    if (!userMarker) {
+                        userMarker = L.circleMarker([lat, lng], { radius: 8, color: '#3b82f6', fillColor: 'white', fillOpacity: 1, weight: 3 }).addTo(map);
+                        map.setView([lat, lng], 19);
+                    } else userMarker.setLatLng([lat, lng]);
+
+                    if (socket && studentID) {
+                        socket.emit('student-status', { id: studentID, lat: lat, lng: lng, status: currentStatus });
+                    }
+                }, null, { enableHighAccuracy: true });
+            }
+        }
+
+        function updateStatus(online) {
+            document.getElementById('conn-dot').style.background = online ? 'var(--success)' : 'var(--danger)';
+            document.getElementById('conn-text').innerText = online && studentID ? "LIVE: " + studentID : "OFFLINE";
+        }
+
+    </script>
+</body>
+
+</html>

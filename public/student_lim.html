@@ -119,11 +119,59 @@
         .btn-send { background: var(--primary); color: white; border: none; width: 32px; height: 32px; border-radius: 8px; margin-right: 5px; cursor: pointer; }
 
         #toast-notification { position: fixed; top: -100px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; padding: 12px 24px; border-radius: 99px; z-index: 20000; transition: 0.5s; }
+    
+    /* --- NEW PERSISTENT ADMIN MODAL --- */
+#admin-reply-modal {
+    position: fixed; 
+    top: -300px; /* Hidden by default */
+    left: 50%; 
+    transform: translateX(-50%);
+    background: #1e293b; /* Dark Blue Theme */
+    color: white; 
+    width: 90%; 
+    max-width: 400px;
+    padding: 20px; 
+    border-radius: 16px; 
+    z-index: 20001; /* Above everything */
+    box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+    border: 1px solid rgba(255,255,255,0.1);
+    transition: top 0.6s cubic-bezier(0.19, 1, 0.22, 1); /* Smooth Drop Effect */
+}
+
+#admin-reply-modal.active {
+    top: 20px; /* Drops down to view */
+}
+
+.modal-header {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;
+}
+.modal-badge {
+    background: #3b82f6; padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase;
+}
+.btn-close {
+    background: rgba(255,255,255,0.2); border: none; color: white; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; font-size: 16px;
+}
+.time-stamp {
+    margin-top: 16px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 11px; color: #94a3b8; display: flex; justify-content: space-between;
+}
     </style>
 </head>
 <body>
 
     <div id="toast-notification"><span id="toast-msg"></span></div>
+
+    <div id="admin-reply-modal">
+        <div class="modal-header">
+            <span class="modal-badge">From Admin</span>
+            <button class="btn-close" onclick="closeAdminModal()">&times;</button>
+        </div>
+        <div style="font-size: 15px; line-height: 1.5; font-weight: 500;" id="admin-msg-content">
+        </div>
+        <div class="time-stamp">
+            <span>Received:</span>
+            <span id="admin-msg-time">--</span>
+        </div>
+    </div>
 
     <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar(false)"></div>
     
@@ -195,213 +243,233 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
 
-    <script>
-        let socket, map, userMarker, destMarker, routingControl;
-        let studentID = localStorage.getItem('knhs_student_id');
+   <script>
+    let socket, map, userMarker, destMarker, routingControl;
+    let studentID = null;
 
-        const LOCATIONS = {
-            'PRINCIPAL FRONT': [7.100589893149529, 124.82393056927546], 
-            'MENDOZA COURT':   [7.100077551009359, 124.82369094608939]
-        };
+    const LOCATIONS = {
+        'PRINCIPAL FRONT': [7.100589893149529, 124.82393056927546],
+        'MENDOZA COURT': [7.100077551009359, 124.82369094608939]
+    };
 
-        const QUICK_MSGS = {
-            'EARTHQUAKE': ['Trapped', 'Injured', 'Exit Blocked'],
-            'FIRE': ['Can\'t breathe', 'Stuck in room', 'Need medical'],
-            'FLOOD': ['Water rising', 'Stuck on roof', 'Can\'t swim'],
-            'DEFAULT': ['Need help', 'Injured']
-        };
+    const QUICK_MSGS = {
+        'EARTHQUAKE': ['Trapped', 'Injured', 'Exit Blocked'],
+        'FIRE': ['Can\'t breathe', 'Stuck in room', 'Need medical'],
+        'FLOOD': ['Water rising', 'Stuck on roof', 'Can\'t swim'],
+        'DEFAULT': ['Need help', 'Injured']
+    };
 
-        window.onload = () => { initMap(); initSocket(); activateGPS(); checkLogin(); };
+    window.onload = () => { initMap(); initSocket(); activateGPS(); checkLogin(); };
 
-        function initMap() {
-            map = L.map('map', { zoomControl: false, attributionControl: false }).setView([7.1002, 124.8240], 19);
-            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}').addTo(map);
-        }
+    function initMap() {
+        map = L.map('map', { zoomControl: false, attributionControl: false }).setView([7.1002, 124.8240], 19);
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}').addTo(map);
+    }
 
-        function initSocket() {
-            if(typeof io !== 'undefined') {
+    function initSocket() {
+            if (typeof io !== 'undefined') {
                 socket = io();
+
+                // 1. Connection Logic
                 socket.on('connect', () => {
                     updateStatus(true);
-                    if(studentID) socket.emit('register-student', studentID.trim());
+                    if (studentID) {
+                        socket.emit('register-student', studentID);
+                    }
                 });
+
+                socket.on('disconnect', () => updateStatus(false));
+
+                // 2. NEW: Handle Admin Reply with Persistent Modal
                 socket.on('receive-reply', (data) => {
-                    showToast(`ADMIN: ${data.message}`);
-                    new Audio('https://www.soundjay.com/buttons/sounds/button-3.mp3').play().catch(()=>{});
+                    console.log("INCOMING MESSAGE:", data);
+
+                    // A. Play Sound
+                    const audio = new Audio('https://www.soundjay.com/buttons/sounds/button-3.mp3');
+                    audio.play().catch(e => console.log("Audio autoplay blocked:", e));
+
+                    // B. Get Current Time & Date
+                    const now = new Date();
+                    const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                    const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+
+                    // C. Populate and Show Modal
+                    document.getElementById('admin-msg-content').innerText = data.message;
+                    document.getElementById('admin-msg-time').innerText = `${dateStr} • ${timeStr}`;
+
+                    document.getElementById('admin-reply-modal').classList.add('active');
                 });
+
                 socket.on('receive-alert', handleAlert);
             }
         }
 
-        function handleAlert(data) {
-            const siren = document.getElementById('siren');
-            const banner = document.getElementById('admin-banner');
-            const quickPanel = document.getElementById('quick-responses');
-            const quickGrid = document.getElementById('quick-grid');
+        // Function to close the modal
+        function closeAdminModal() {
+            document.getElementById('admin-reply-modal').classList.remove('active');
+        }
 
-            if (data.type === 'SAFE' || data.type === 'CLEAR') {
-                banner.style.display = 'none';
-                quickPanel.style.display = 'none';
-                siren.pause();
-                if(routingControl) { map.removeControl(routingControl); routingControl = null; }
-                if(destMarker) { map.removeLayer(destMarker); destMarker = null; }
-            } else {
-                banner.style.display = 'block';
-                document.getElementById('alert-title').innerText = data.type + " ALERT";
-                document.getElementById('admin-banner-text').innerText = data.message;
-                
-                quickPanel.style.display = 'block';
-                quickGrid.innerHTML = '';
-                (QUICK_MSGS[data.type] || QUICK_MSGS['DEFAULT']).forEach(t => {
-                    quickGrid.innerHTML += `<button class="btn-quick" onclick="sendQuickMsg('${t}')">${t}</button>`;
-                });
+    async function checkLogin() {
+        try {
+            const response = await fetch('/api/me');
+            const data = await response.json();
 
-                siren.play().catch(()=>{});
-                
-                let zoneCoords = (data.type === 'FLOOD') ? LOCATIONS['MENDOZA COURT'] : LOCATIONS['PRINCIPAL FRONT'];
-                let destLatLng = L.latLng(zoneCoords[0], zoneCoords[1]);
+            if (data.name && data.id) {
+                // FORCE TRIM: Remove any accidental spaces
+                studentID = data.id.toString().trim();
 
-                const pinIcon = L.divIcon({
-                    className: 'dest-pin',
-                    html: `<div class="pin-circle"><i class="fas fa-person-running"></i></div>`,
-                    iconSize: [45, 45],
-                    iconAnchor: [22, 22]
-                });
+                // Update UI
+                document.getElementById('login-modal').style.display = 'none';
+                document.getElementById('sidebar-id-display').innerText = "ID: " + studentID;
+                document.getElementById('sidebar-name').innerText = data.name.trim().split(' ')[0];
 
-                if(destMarker) map.removeLayer(destMarker);
-                destMarker = L.marker(destLatLng, {icon: pinIcon}).addTo(map).bindPopup("<b>GO HERE NOW</b>").openPopup();
+                // Update Header to show we are connected as THIS ID
+                document.getElementById('conn-text').innerText = "LIVE: " + studentID;
 
-                if(userMarker) {
-                    drawPath(userMarker.getLatLng(), destLatLng);
-                    const bounds = L.latLngBounds([userMarker.getLatLng(), destLatLng]);
-                    map.fitBounds(bounds, { padding: [50, 50] });
+                // CRITICAL: Join the Room
+                if (socket) {
+                    socket.emit('register-student', studentID);
+                    console.log("Initially joined room:", studentID);
                 }
+            } else {
+                logoutUser();
+            }
+        } catch (error) {
+            console.error("Login Check Failed:", error);
+        }
+    }
+
+    function handleAlert(data) {
+        const siren = document.getElementById('siren');
+        const banner = document.getElementById('admin-banner');
+        const quickPanel = document.getElementById('quick-responses');
+        const quickGrid = document.getElementById('quick-grid');
+
+        if (data.type === 'SAFE' || data.type === 'CLEAR') {
+            banner.style.display = 'none';
+            quickPanel.style.display = 'none';
+            if (siren) { siren.pause(); siren.currentTime = 0; }
+            if (routingControl) { map.removeControl(routingControl); routingControl = null; }
+            if (destMarker) { map.removeLayer(destMarker); destMarker = null; }
+        } else {
+            banner.style.display = 'block';
+            document.getElementById('alert-title').innerText = data.type + " ALERT";
+            document.getElementById('admin-banner-text').innerText = data.message;
+
+            quickPanel.style.display = 'block';
+            quickGrid.innerHTML = '';
+            (QUICK_MSGS[data.type] || QUICK_MSGS['DEFAULT']).forEach(t => {
+                quickGrid.innerHTML += `<button class="btn-quick" onclick="sendQuickMsg('${t}')">${t}</button>`;
+            });
+
+            if (siren) siren.play().catch(() => { });
+
+            let zoneCoords = (data.type === 'FLOOD') ? LOCATIONS['MENDOZA COURT'] : LOCATIONS['PRINCIPAL FRONT'];
+            let destLatLng = L.latLng(zoneCoords[0], zoneCoords[1]);
+
+            const pinIcon = L.divIcon({
+                className: 'dest-pin',
+                html: `<div class="pin-circle"><i class="fas fa-person-running"></i></div>`,
+                iconSize: [45, 45],
+                iconAnchor: [22, 22]
+            });
+
+            if (destMarker) map.removeLayer(destMarker);
+            destMarker = L.marker(destLatLng, { icon: pinIcon }).addTo(map).bindPopup("<b>GO HERE NOW</b>").openPopup();
+
+            if (userMarker) {
+                drawPath(userMarker.getLatLng(), destLatLng);
+                const bounds = L.latLngBounds([userMarker.getLatLng(), destLatLng]);
+                map.fitBounds(bounds, { padding: [50, 50] });
             }
         }
+    }
 
-        function drawPath(start, end) {
-            if(routingControl) map.removeControl(routingControl);
-            routingControl = L.Routing.control({
-                waypoints: [start, end],
-                createMarker: () => null,
-                lineOptions: { 
-                    styles: [
-                        {color: 'white', weight: 8, opacity: 0.5},
-                        {color: '#ef4444', weight: 6, opacity: 0.9}
-                    ]
-                },
-                show: false,
-                addWaypoints: false,
-                draggableWaypoints: false
-            }).addTo(map);
-        }
+    function drawPath(start, end) {
+        if (routingControl) map.removeControl(routingControl);
+        routingControl = L.Routing.control({
+            waypoints: [start, end],
+            createMarker: () => null,
+            lineOptions: {
+                styles: [
+                    { color: 'white', weight: 8, opacity: 0.5 },
+                    { color: '#ef4444', weight: 6, opacity: 0.9 }
+                ]
+            },
+            show: false,
+            addWaypoints: false,
+            draggableWaypoints: false
+        }).addTo(map);
+    }
 
-        function toggleSidebar(show) {
-            document.getElementById('sidebar').classList.toggle('active', show);
-            document.getElementById('sidebar-overlay').classList.toggle('active', show);
-        }
+    function toggleSidebar(show) {
+        document.getElementById('sidebar').classList.toggle('active', show);
+        document.getElementById('sidebar-overlay').classList.toggle('active', show);
+    }
 
-        function sendQuickMsg(text) {
-            markAsDanger(); 
-            if(socket) socket.emit('student-note', { id: studentID, message: `[QUICK SOS]: ${text}` });
-            showToast("Alert Sent!");
-        }
+    function sendQuickMsg(text) {
+        markAsDanger();
+        if (socket) socket.emit('student-note', { id: studentID, message: `[QUICK SOS]: ${text}` });
+        showToast("Alert Sent!");
+    }
 
-        function markAsSafe() {
-            if(socket) socket.emit('student-status', { id: studentID, status: 'SAFE', lat: userMarker?.getLatLng().lat, lng: userMarker?.getLatLng().lng });
+    function markAsSafe() {
+        if (socket && studentID) {
+            socket.emit('student-status', { id: studentID, status: 'SAFE', lat: userMarker?.getLatLng().lat, lng: userMarker?.getLatLng().lng });
+
+            // STOP AUDIO
+            const siren = document.getElementById('siren');
+            if (siren) { siren.pause(); siren.currentTime = 0; }
+
             showToast("Status: Safe");
         }
+    }
 
-        function markAsDanger() {
-            if(socket) socket.emit('student-status', { id: studentID, status: 'DANGER', lat: userMarker?.getLatLng().lat, lng: userMarker?.getLatLng().lng });
+    function markAsDanger() {
+        if (socket && studentID) {
+            socket.emit('student-status', { id: studentID, status: 'DANGER', lat: userMarker?.getLatLng().lat, lng: userMarker?.getLatLng().lng });
             showToast("SOS Sent!");
         }
+    }
 
-        function sendNote() {
-            const input = document.getElementById('student-note');
-            if (input.value.trim() && socket) {
-                socket.emit('student-note', { id: studentID, message: input.value });
-                input.value = '';
-                showToast("Sent");
-            }
+    function sendNote() {
+        const input = document.getElementById('student-note');
+        if (input.value.trim() && socket && studentID) {
+            socket.emit('student-note', { id: studentID, message: input.value });
+            input.value = '';
+            showToast("Sent");
         }
+    }
 
-        function showToast(text) {
-            const toast = document.getElementById('toast-notification');
-            document.getElementById('toast-msg').innerText = text;
-            toast.style.top = "20px";
-            setTimeout(() => toast.style.top = "-100px", 3000);
+    function showToast(text) {
+        const toast = document.getElementById('toast-notification');
+        document.getElementById('toast-msg').innerText = text;
+        toast.style.top = "20px";
+        setTimeout(() => toast.style.top = "-100px", 4000);
+    }
+
+    function logoutUser() {
+        window.location.href = '/logout';
+    }
+
+    function activateGPS() {
+        if (navigator.geolocation) {
+            navigator.geolocation.watchPosition((pos) => {
+                const lat = pos.coords.latitude, lng = pos.coords.longitude;
+                if (!userMarker) {
+                    userMarker = L.circleMarker([lat, lng], { radius: 8, color: '#3b82f6', fillColor: 'white', fillOpacity: 1, weight: 3 }).addTo(map);
+                    map.setView([lat, lng], 19);
+                } else userMarker.setLatLng([lat, lng]);
+
+                if (socket && studentID) socket.emit('student-status', { id: studentID, lat: lat, lng: lng });
+            }, null, { enableHighAccuracy: true });
         }
+    }
 
-        async function loginUser() {
-                const id = document.getElementById('student-id-input').value.trim();
-
-                if (!id) return showToast("Please enter your ID");
-
-                try {
-                    const response = await fetch('/auth/login', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ username: id, password: 'password123' }) // Ensure this matches your DB password
-                    });
-
-                    if (response.redirected) {
-                        localStorage.setItem('knhs_student_id', id);
-                        window.location.href = response.url;
-                    } else {
-                        showToast("Invalid Student ID");
-                    }
-                } catch (error) {
-                    console.error("Login error:", error);
-                }
-            }
-
-        async function checkLogin() {
-                if (studentID) {
-                    try {
-                        // Fetch the logged-in student's data from the server
-                        const response = await fetch('/api/me');
-                        const data = await response.json();
-
-                        if (data.name) {
-                            document.getElementById('login-modal').style.display = 'none';
-                            document.getElementById('sidebar-id-display').innerText = "ID: " + data.id;
-
-                            // --- FIRST NAME LOGIC ---
-                            // This takes the full name (e.g. "Juan Dela Cruz"), splits it by spaces,
-                            // and picks the first item (e.g. "Juan")
-                            const firstName = data.name.trim().split(' ')[0];
-                            document.getElementById('sidebar-name').innerText = firstName;
-
-                            if (socket) socket.emit('register-student', data.id);
-                        } else {
-                            logoutUser();
-                        }
-                    } catch (error) {
-                        console.error("Error fetching student profile:", error);
-                    }
-                }
-            }
-
-        function logoutUser() { localStorage.removeItem('knhs_student_id'); location.reload(); }
-
-        function activateGPS() {
-            if (navigator.geolocation) {
-                navigator.geolocation.watchPosition((pos) => {
-                    const lat = pos.coords.latitude, lng = pos.coords.longitude;
-                    if(!userMarker) {
-                        userMarker = L.circleMarker([lat, lng], {radius: 8, color: '#3b82f6', fillColor: 'white', fillOpacity: 1, weight: 3}).addTo(map);
-                        map.setView([lat, lng], 19);
-                    } else userMarker.setLatLng([lat, lng]);
-                    if(socket && studentID) socket.emit('student-status', { id: studentID, lat: lat, lng: lng });
-                }, null, {enableHighAccuracy: true});
-            }
-        }
-
-        function updateStatus(online) {
-            document.getElementById('conn-dot').style.background = online ? 'var(--success)' : 'var(--danger)';
-            document.getElementById('conn-text').innerText = online ? "ONLINE" : "OFFLINE";
-        }
-    </script>
+    function updateStatus(online) {
+        document.getElementById('conn-dot').style.background = online ? 'var(--success)' : 'var(--danger)';
+        document.getElementById('conn-text').innerText = online && studentID ? "LIVE: " + studentID : "OFFLINE";
+    }
+</script>
 </body>
 </html>

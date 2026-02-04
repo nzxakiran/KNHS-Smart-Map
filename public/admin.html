@@ -1,0 +1,1228 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KNHS | Strategic Command</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <style>
+        :root {
+            --bg-app: #f8fafc;
+            --sidebar-bg: #0f172a;
+            --sidebar-hover: #1e293b;
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --danger: #ef4444;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --white: #ffffff;
+            --border: #e2e8f0;
+            --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-app);
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 280px;
+            background: var(--sidebar-bg);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            padding: 32px 20px;
+        }
+
+        .brand {
+            font-size: 1.25rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 48px;
+            letter-spacing: -0.5px;
+        }
+
+        .nav-group {
+            margin-bottom: 24px;
+        }
+
+        .nav-label {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #475569;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+            padding-left: 12px;
+        }
+
+        .nav-item {
+            padding: 12px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: 0.2s;
+            color: #94a3b8;
+            margin-bottom: 4px;
+        }
+
+        .nav-item:hover {
+            background: var(--sidebar-hover);
+            color: white;
+        }
+
+        .nav-item.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-logout {
+            margin-top: auto;
+            color: #f87171;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            font-size: 0.9rem;
+        }
+
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        header {
+            padding: 24px 40px;
+            background: white;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-info h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .header-info p {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .time-badge {
+            background: #f1f5f9;
+            padding: 8px 16px;
+            border-radius: 99px;
+            font-family: monospace;
+            font-weight: 600;
+            color: var(--primary-dark);
+        }
+
+        .content-area {
+            padding: 32px 40px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+        }
+
+        .stat-card span {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .stat-card h3 {
+            font-size: 1.8rem;
+            margin-top: 8px;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 24px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            font-weight: 600;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #admin-map {
+            width: 100%;
+            height: 450px;
+        }
+
+        .alert-btn-group {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            padding: 20px;
+        }
+
+        .alert-btn {
+            border: none;
+            padding: 14px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-earthquake {
+            background: #fff7ed;
+            color: #c2410c;
+            border: 1px solid #ffedd5;
+        }
+
+        .btn-fire {
+            background: #fef2f2;
+            color: #b91c1c;
+            border: 1px solid #fee2e2;
+        }
+
+        .btn-flood {
+            background: #eff6ff;
+            color: #1d4ed8;
+            border: 1px solid #dbeafe;
+        }
+
+        .btn-reset {
+            background: #f0fdf4;
+            color: #15803d;
+            border: 1px solid #dcfce7;
+        }
+
+        .alert-btn:hover {
+            filter: brightness(0.95);
+            transform: translateY(-1px);
+        }
+
+        .log-container {
+            flex: 1;
+            max-height: 400px;
+            overflow-y: auto;
+            background: #fafafa;
+        }
+
+        .log-entry {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.85rem;
+            position: relative;
+        }
+
+        .urgent-entry {
+            border-left: 4px solid var(--danger);
+            background: #fff1f2;
+        }
+
+        /* New Style for Sync Card */
+        .sync-entry {
+            border-left: 4px solid #f59e0b;
+            background: #fffbeb;
+        }
+
+        .sos-tag {
+            background: var(--danger);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 800;
+            font-size: 10px;
+            margin-right: 8px;
+            animation: pulse-sos 1s infinite;
+        }
+
+        @keyframes pulse-sos {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: #f8fafc;
+            text-align: left;
+            padding: 16px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        td {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.9rem;
+        }
+
+        .status-pill {
+            padding: 4px 10px;
+            border-radius: 99px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .status-safe {
+            background: #dcfce7;
+            color: #15803d;
+        }
+
+        .status-danger {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+
+        .marker-pin {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .marker-safe {
+            background-color: var(--success);
+        }
+
+        .marker-danger {
+            background-color: var(--danger);
+            animation: pulse-red 1.5s infinite;
+        }
+
+        .marker-neutral {
+            background-color: #94a3b8;
+        }
+
+        @keyframes pulse-red {
+            0% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+                transform: scale(1);
+            }
+
+            70% {
+                box-shadow: 0 0 0 15px rgba(239, 68, 68, 0);
+                transform: scale(1.1);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+                transform: scale(1);
+            }
+        }
+
+        .popup-card {
+            text-align: center;
+            font-family: 'Inter', sans-serif;
+            min-width: 180px;
+        }
+
+        .popup-card h3 {
+            margin: 0 0 5px 0;
+            font-size: 14px;
+            font-weight: 800;
+            color: var(--text-main);
+        }
+
+        .popup-card p {
+            margin: 2px 0;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .popup-coords {
+            font-family: monospace;
+            background: #f1f5f9;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            margin-top: 5px;
+            display: inline-block;
+        }
+
+        .popup-btn {
+            margin-top: 8px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            width: 100%;
+            padding: 6px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 11px;
+        }
+
+        .logs-grid {
+            margin-top: 24px;
+            display: grid;
+            grid-template-columns: 1fr;
+        }
+
+        .system-logs-container {
+            max-height: 250px;
+            overflow-y: auto;
+            background: #ffffff;
+            padding: 10px;
+        }
+
+        .new-message-glow {
+            animation: glow-border 2s infinite alternate;
+            background: #fff5f5 !important;
+        }
+
+        @keyframes glow-border {
+            from { border-left: 4px solid var(--danger); }
+            to { border-left: 10px solid var(--danger); }
+        }
+
+        /* Scrollable table body logic */
+        .system-logs-container table {
+            display: flex;
+            flex-direction: column;
+            height: 500px; 
+        }
+
+        /* Align all columns to the left to match the Timestamp column */
+        .system-logs-container th,
+        .system-logs-container td {
+            text-align: left !important;
+            padding-left: 16px;
+        }
+
+        /* Ensure specific table layout for scrollable body */
+        .system-logs-container tr {
+            display: table;
+            width: 100%;
+            table-layout: fixed; /* Forces columns to respect set widths */
+        }
+
+        .system-logs-container th, 
+        .system-logs-container td {
+            padding: 16px;
+            text-align: center; 
+            vertical-align: middle;
+            border-bottom: 1px solid var(--border);
+        }
+
+        /* Override: Keep Timestamp column left-aligned for readability */
+        .system-logs-container th:first-child,
+        .system-logs-container td:first-child {
+            text-align: left !important;
+            padding-left: 20px;
+        }
+
+        /* Column Width Logic: 30% for time, 17.5% for others to equal 100% */
+        .system-logs-container th:nth-child(1), .system-logs-container td:nth-child(1) { width: 30%; }
+        .system-logs-container th:nth-child(2), .system-logs-container td:nth-child(2) { width: 17.5%; }
+        .system-logs-container th:nth-child(3), .system-logs-container td:nth-child(3) { width: 17.5%; }
+        .system-logs-container th:nth-child(4), .system-logs-container td:nth-child(4) { width: 17.5%; }
+        .system-logs-container th:nth-child(5), .system-logs-container td:nth-child(5) { width: 17.5%; }
+
+        /* Maintain clickable styling for numbers */
+        .clickable-count {
+            cursor: pointer;
+            text-decoration: underline;
+            text-underline-offset: 4px;
+            transition: opacity 0.2s;
+            display: inline-block; /* Helps with alignment consistency */
+        }
+
+        .clickable-count:hover {
+            opacity: 0.7;
+        }
+
+        .card-header button:hover {
+            background: var(--danger) !important;
+            color: white !important;
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav class="sidebar">
+        <div class="brand"><i class="fas fa-shield-halved"></i> COMMAND PRO</div>
+        <div class="nav-group">
+            <div class="nav-label">Core Operations</div>
+            <div class="nav-item active" id="nav-live" onclick="switchTab('map')"><i
+                    class="fas fa-map-location-dot"></i> Live Surveillance</div>
+            <div class="nav-item" id="nav-logs" onclick="switchTab('logs')">
+                <i class="fas fa-clock-rotate-left"></i> Disaster Logs
+            </div>
+            <div class="nav-item" id="nav-directory" onclick="switchTab('students')"><i
+                    class="fas fa-user-graduate"></i> Student Directory</div>
+        </div>
+        <a href="#" class="btn-logout" onclick="logoutSystem()"><i class="fas fa-power-off"></i> System Logout</a>
+    </nav>
+
+    <main class="main">
+        <header>
+            <div class="header-info">
+                <h1>Emergency Response Console</h1>
+                <p>Kabacan National High School • Strategic Monitoring</p>
+            </div>
+            <div id="live-clock" class="time-badge">00:00:00</div>
+        </header>
+
+        <div id="tab-map" class="content-area">
+            <div class="stats-grid">
+                <div class="stat-card"><span>Active Students</span>
+                    <h3 id="count-total">0</h3>
+                </div>
+                <div class="stat-card"><span>Verified Safe</span>
+                    <h3 id="count-safe" style="color: var(--success);">0</h3>
+                </div>
+                <div class="stat-card" style="border-bottom: 3px solid var(--danger);"><span>At Immediate Risk</span>
+                    <h3 id="count-danger" style="color: var(--danger);">0</h3>
+                </div>
+            </div>
+
+            <div class="main-grid">
+                <div class="left-col">
+                    <div class="card">
+                        <div class="card-header"><i class="fas fa-map"></i> Live View</div>
+                        <div id="admin-map"></div>
+                    </div>
+                </div>
+
+                <div class="right-col">
+                    <div class="card" style="margin-bottom: 24px;">
+                        <div class="card-header"><i class="fas fa-tower-broadcast"></i> Broadcast Protocol</div>
+                        <div class="alert-btn-group">
+                            <button class="alert-btn btn-earthquake" onclick="triggerAlert('EARTHQUAKE')"><i
+                                    class="fas fa-house-crack"></i> Earthquake</button>
+                            <button class="alert-btn btn-fire" onclick="triggerAlert('FIRE')"><i
+                                    class="fas fa-fire-extinguisher"></i> Fire</button>
+                            <button class="alert-btn btn-flood" onclick="triggerAlert('FLOOD')"><i
+                                    class="fas fa-faucet-drip"></i> Flood</button>
+                            <button class="alert-btn btn-reset" onclick="triggerAlert('SAFE')"><i
+                                    class="fas fa-rotate-left"></i> All Clear</button>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                            <span><i class="fas fa-comment-dots"></i> Critical SOS Feed</span>
+                            <button onclick="clearSOSMessages()" style="background: transparent; border: 1px solid var(--danger); color: var(--danger); font-size: 10px; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-weight: 600;">
+                                <i class="fas fa-trash-can"></i> CLEAR ALL
+                            </button>
+                        </div>
+                        <div class="log-container" id="list-danger"></div> 
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-logs" class="content-area" style="display:none;">
+            <div class="card">
+                <div class="card-header"><i class="fas fa-clock-rotate-left"></i> Historical Disaster Logs</div>
+                <div class="system-logs-container" style="max-height: unset;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Event</th>
+                                <th style="color: var(--success);">Safe</th>
+                                <th style="color: var(--danger);">At Risk</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="disaster-logs-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-students" class="content-area" style="display:none;">
+            <div class="card">
+                <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>Global Student Roster</span>
+                    <div class="search-container" style="position: relative;">
+                        <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.8rem;"></i>
+                        <input type="text" id="roster-search" placeholder="Search by name or ID..." 
+                            onkeyup="filterRoster()"
+                            style="padding: 8px 12px 8px 35px; border-radius: 6px; border: 1px solid var(--border); font-size: 0.85rem; width: 250px; outline: none;">
+                    </div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Student Identifier</th>
+                            <th>Account Status</th>
+                            <th>Status Condition</th>
+                            <th>Last Check-in</th>
+                        </tr>
+                    </thead>
+                    <tbody id="roster-table-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        let socket, supabaseAdmin, map;
+        const studentMarkers = {};
+        const studentData = new Map();
+        let fullRoster = [];
+        const KNHS_LOC = [7.100265815095807, 124.82402407212273];
+
+        window.onload = function () {
+            initMap();
+            initSupabase();
+            initSocket();
+            fetchStudentRoster();
+            loadSavedMessages();
+            setInterval(() => { console.log("Auto-refreshing roster..."); fetchStudentRoster(); }, 15000);
+            setInterval(() => { document.getElementById('live-clock').innerText = new Date().toLocaleTimeString(); }, 1000);
+        };
+
+        function initMap() {
+            map = L.map('admin-map', { zoomControl: false }).setView(KNHS_LOC, 18);
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}').addTo(map);
+            L.control.zoom({ position: 'bottomright' }).addTo(map);
+            loadSafeZones();
+        }
+
+        async function loadSafeZones() {
+            const zones = [
+                { name: "Principal Front", coords: [7.100589893149529, 124.82393056927546] },
+                { name: "Mendoza Court", coords: [7.100077551009359, 124.82369094608939] },
+                { name: "Tejada Court", coords: [7.1001461901808565, 124.82430112059413] }
+            ];
+            const shieldIcon = L.divIcon({
+                html: `<div style="display:flex; justify-content:center; align-items:center; width:30px; height:30px; background:white; border-radius:50%; box-shadow:0 2px 4px rgba(0,0,0,0.3); border: 2px solid #10b981;"><i class="fas fa-shield-halved" style="color:#10b981; font-size:14px;"></i></div>`,
+                className: 'custom-shield-marker',
+                iconSize: [30, 30]
+            });
+            zones.forEach(z => { L.marker(z.coords, { icon: shieldIcon }).addTo(map).bindPopup(`<b>Zone:</b> ${z.name}`); });
+        }
+
+        function initSupabase() {
+            const url = 'https://dmomqmfqvfjvxswpgwge.supabase.co';
+            const key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRtb21xbWZxdmZqdnhzd3Bnd2dlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk1NTk1MjksImV4cCI6MjA4NTEzNTUyOX0.Ij3zwZX7Zqn_IMeSKVoeJbE9gl06qmbvoFXtiLWUv3E';
+            if (window.supabase) supabaseAdmin = window.supabase.createClient(url, key);
+        }
+
+        async function fetchStudentRoster() {
+            if (supabaseAdmin) {
+                // Fetch student_id, name, and the two new persistent columns
+                const { data, error } = await supabaseAdmin
+                    .from('students')
+                    .select('student_id, name, last_seen, last_status') 
+                    .order('name');
+                    
+                if (data) {
+                    fullRoster = data;
+                    document.getElementById('count-total').innerText = fullRoster.length;
+                    updateUI();
+                }
+            }
+        }
+
+        function initSocket() {
+            socket = io();
+
+            socket.on('admin-dashboard-update', async (data) => {
+                const { id, status, lat, lng } = data;
+                const currentTime = new Date().toLocaleString(); // Capture timestamp for permanent record
+                
+                let studentName = "Unknown Student";
+                
+                // 1. UPDATE LOCAL ROSTER: Ensure the table shows the new data even if offline
+                const rosterMatch = fullRoster.find(s => s.student_id === id);
+                if (rosterMatch) {
+                    studentName = rosterMatch.name;
+                    rosterMatch.last_seen = currentTime;
+                    rosterMatch.last_status = status; // Store the status in the local roster object
+                }
+
+                // 2. UPDATE LIVE FEED: For the active markers and stats
+                studentData.set(id, { 
+                    status, 
+                    time: currentTime, 
+                    name: studentName 
+                });
+
+                // 3. PERMANENT DATABASE RECORD: Sync Time and Status to Supabase
+                if (supabaseAdmin) {
+                    const { error } = await supabaseAdmin
+                        .from('students')
+                        .update({ 
+                            last_seen: currentTime,
+                            last_status: status 
+                        })
+                        .eq('student_id', id);
+                    
+                    if (error) console.error("Database Sync Error:", error.message);
+                }
+
+                // 4. MAP VISUALS: Update or Create Student Marker
+                if (lat && lng) {
+                    const isDanger = (status === 'DANGER');
+                    let className = 'marker-pin marker-neutral';
+                    if (status === 'SAFE') className = 'marker-pin marker-safe';
+                    if (status === 'DANGER') className = 'marker-pin marker-danger';
+
+                    const customIcon = L.divIcon({ 
+                        className: 'custom-div-icon', 
+                        html: `<div class="${className}"></div>`, 
+                        iconSize: [20, 20], 
+                        iconAnchor: [10, 10], 
+                        popupAnchor: [0, -10] 
+                    });
+
+                    let statusColor = '#64748b';
+                    let statusText = '🔵 CONNECTED';
+                    if (status === 'SAFE') { statusColor = 'var(--success)'; statusText = '✅ SAFE STATUS'; }
+                    if (status === 'DANGER') { statusColor = 'var(--danger)'; statusText = '⚠️ SOS ALERT'; }
+
+                    const popupContent = `
+                        <div class="popup-card">
+                            <div style="margin-bottom:8px; color:${statusColor}; font-weight:800; font-size:10px; letter-spacing:1px;">${statusText}</div>
+                            <h3>${studentName}</h3>
+                            <p>ID: ${id}</p>
+                            <div class="popup-coords">${lat.toFixed(5)}, ${lng.toFixed(5)}</div>
+                            ${isDanger ? `<button class="popup-btn" onclick="replyTo('${id}')">Message Student</button>` : ''}
+                        </div>`;
+
+                    if (studentMarkers[id]) {
+                        studentMarkers[id].setLatLng([lat, lng]);
+                        studentMarkers[id].setIcon(customIcon);
+                        studentMarkers[id].getPopup().setContent(popupContent);
+                    } else {
+                        studentMarkers[id] = L.marker([lat, lng], { icon: customIcon }).addTo(map).bindPopup(popupContent);
+                    }
+
+                    // 5. EMERGENCY PROTOCOL: Auto-focus and sound for DANGER
+                    if (isDanger) {
+                        studentMarkers[id].openPopup();
+                        map.flyTo([lat, lng], 16, { animate: true, duration: 2 });
+                        new Audio('https://image2url.com/r2/default/audio/1770035245086-6d368099-59b3-4f94-9f42-a06ce04c585a.mp3').play().catch(() => {});
+                    }
+                }
+                
+                // 6. REFRESH UI: Update the statistics and the student roster table
+                updateUI();
+            });
+
+            socket.on('student-disconnected', (data) => {
+                if (studentData.has(data.id)) studentData.delete(data.id);
+                if (studentMarkers[data.id]) { map.removeLayer(studentMarkers[data.id]); delete studentMarkers[data.id]; }
+                updateUI();
+            });
+
+            socket.on('admin-receive-note', async (data) => {
+                const list = document.getElementById('list-danger');
+                const item = document.createElement('div');
+                
+                // We create a temporary UI ID for the real-time card
+                const tempId = `temp-${Date.now()}`;
+                item.className = 'log-entry urgent-entry new-message-glow'; // Added glow class
+                item.id = tempId;
+
+                const distressKeywords = ['help', 'trapped', 'emergency', 'hurt', 'danger', 'sos', 'tulong'];
+                const isSOS = distressKeywords.some(word => data.message.toLowerCase().includes(word));
+                
+                item.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                        <div>
+                            ${isSOS ? `<span class="sos-tag">CRITICAL SOS</span>` : ''}
+                            <span class="new-indicator" style="background:var(--primary); color:white; font-size:9px; padding:2px 6px; border-radius:4px; font-weight:bold; margin-right:8px;">NEW</span>
+                        </div>
+                        <small style="color:var(--text-muted); font-size:10px;">Just now</small>
+                    </div>
+                    <div style="margin: 6px 0;"><strong>ID: ${data.id}</strong></div>
+                    <div style="color:#1e293b; font-style: italic;">"${data.message}"</div>
+                    <button id="btn-${tempId}" onclick="replyTo('${data.id}', '${tempId}')" 
+                            style="margin-top:10px; background:#ef4444; border:none; color:white; font-size:10px; font-weight:700; padding:6px 12px; border-radius:4px; cursor:pointer; transition: 0.3s;">
+                        REPLY TO STUDENT
+                    </button>
+                    <hr style="margin-top:15px; border:0; border-top:1px solid #fee2e2;">`;
+                
+                list.prepend(item);
+
+                // Save to Supabase and get the real ID back
+                if (supabaseAdmin) {
+                    const { data: savedData, error } = await supabaseAdmin
+                        .from('sos_messages')
+                        .insert([{
+                            student_id: data.id,
+                            message: data.message,
+                            is_critical: isSOS,
+                            replied: false,
+                            created_at: new Date().toISOString()
+                        }])
+                        .select(); // This allows us to get the ID back
+
+                    if (!error && savedData.length > 0) {
+                        // Update the button's onclick to include the real Database ID
+                        const realDbId = savedData[0].id;
+                        const btn = document.getElementById(`btn-${tempId}`);
+                        if (btn) {
+                            btn.setAttribute('onclick', `replyTo('${data.id}', '${tempId}', ${realDbId})`);
+                        }
+                    }
+                }
+
+                if (isSOS) new Audio('https://image2url.com/r2/default/audio/1770035478181-9daca647-30be-478d-bef0-2700b5dfcbdd.mp3').play();
+            });
+
+            // --- FAIL-SAFE OFFLINE SYNC HANDLER ---
+            socket.on('admin-sync-report', async (data) => {
+                console.log("🚀 SYNC EVENT RECEIVED!", data); // Check Console (F12)
+
+                const feed = document.getElementById('list-danger');
+                if (!feed) {
+                    console.error("❌ Error: Could not find 'list-danger' element in HTML");
+                    return;
+                }
+
+                let address = "Location Data Unavailable";
+                let mapLink = "#";
+                let lastLog = null;
+
+                // Safely find the last GPS point
+                if (data.logs && data.logs.length > 0) {
+                    lastLog = data.logs.filter(l => l.lat && l.lng).pop();
+                }
+
+                // Try to get address, but don't crash if it fails
+                if (lastLog) {
+                    try {
+                        console.log("Attempting to fetch address...");
+                        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lastLog.lat}&lon=${lastLog.lng}`);
+                        if (res.ok) {
+                            const json = await res.json();
+                            if (json.display_name) {
+                                const parts = json.display_name.split(',');
+                                address = parts[0] + ", " + (parts[1] || '');
+                            }
+                        } else {
+                            address = "Address Lookup Failed";
+                        }
+                        mapLink = `https://www.google.com/maps?q=${lastLog.lat},${lastLog.lng}`;
+                    } catch (e) {
+                        console.warn("⚠️ Geo Error (This is okay):", e);
+                        address = `GPS: ${lastLog.lat.toFixed(5)}, ${lastLog.lng.toFixed(5)}`;
+                    }
+                } else {
+                    address = "No GPS Data in Sync";
+                }
+
+                console.log("Rendering Card...");
+
+                // Create the HTML Card
+                const time = new Date().toLocaleTimeString();
+                const reportHTML = `
+                    <div class="log-entry sync-entry" style="border-left: 4px solid #f59e0b; background: #fffbeb; padding: 12px; margin-bottom: 8px;">
+                        <div style="font-size: 12px; color: #b45309; font-weight: 700; margin-bottom: 4px;">
+                            <i class="fas fa-history"></i> OFFLINE HISTORY SYNCED
+                        </div>
+                        <div style="font-weight: 600; color:#1e293b;">Student ID: ${data.id}</div>
+                        <div style="font-size: 13px; margin: 5px 0; color: #4b5563;">
+                            Uploaded <b>${data.count}</b> offline actions.
+                        </div>
+                        
+                        <div style="background: rgba(255,255,255,0.6); padding: 8px; border-radius: 6px; font-size: 12px; margin-top: 5px; border: 1px solid #fcd34d;">
+                            <div><b>📍 Last Active:</b> ${address}</div>
+                            <div><b>⏰ Synced At:</b> ${time}</div>
+                            ${lastLog ? `<a href="${mapLink}" target="_blank" style="color:#0ea5e9; text-decoration:none; font-weight:600; display:block; margin-top:4px;">View on Google Maps →</a>` : ''}
+                        </div>
+                    </div>
+                `;
+
+                // Force Insert
+                feed.insertAdjacentHTML('afterbegin', reportHTML);
+                console.log("✅ Card Inserted into DOM");
+
+                // Draw Path
+                if (data.logs.length > 1) {
+                    drawGhostPath(data.logs);
+                }
+            });
+        }
+
+        async function triggerAlert(type) {
+            const msg = prompt(`Enter instructions for ${type}:`, `CRITICAL: ${type} protocol initiated.`);
+            
+            if (msg) {
+                // Capture current stats from the UI cards
+                const safeCount = parseInt(document.getElementById('count-safe').innerText) || 0;
+                const dangerCount = parseInt(document.getElementById('count-danger').innerText) || 0;
+
+                socket.emit('broadcast-alert', { type: type, message: msg });
+
+                if (supabaseAdmin) {
+                    const { error } = await supabaseAdmin
+                        .from('disaster_history')
+                        .insert([
+                            { 
+                                type: type, 
+                                instructions: msg,
+                                count_safe: safeCount,    // Save snapshot
+                                count_danger: dangerCount, // Save snapshot
+                                created_at: new Date().toISOString() 
+                            }
+                        ]);
+                    
+                    if (error) console.error("Supabase Save Error:", error.message);
+                }
+                // Refresh logs view to show the new entry
+                fetchDisasterLogs();
+            }
+        }
+
+        async function replyTo(sid, uiMsgId, dbId) {
+            const msg = prompt(`Direct Message to Student ${sid}:`, "Help is on the way. Stay calm.");
+            
+            if (msg) {
+                // 1. Send via Socket
+                socket.emit('admin-reply', { targetId: sid.toString().trim(), message: msg });
+
+                // 2. Update UI
+                const btn = document.getElementById(`btn-${uiMsgId}`);
+                if (btn) {
+                    btn.innerHTML = `<i class="fas fa-check"></i> REPLY SENT`;
+                    btn.style.background = "var(--success)";
+                    btn.style.cursor = "default";
+                    btn.disabled = true;
+                }
+
+                // 3. Update Database so it stays "Replied" on refresh
+                if (supabaseAdmin && dbId) {
+                    await supabaseAdmin
+                        .from('sos_messages')
+                        .update({ replied: true })
+                        .eq('id', dbId);
+                }
+            }
+        }
+
+        function updateUI() {
+            let safe = 0, danger = 0;
+            const body = document.getElementById('roster-table-body');
+            
+            // Guard clause to prevent errors if the table body isn't found
+            if (!body) return;
+            
+            body.innerHTML = '';
+            
+            // 1. Calculate Live Stats from active connections
+            studentData.forEach(v => {
+                if (v.status === 'SAFE') safe++;
+                else if (v.status === 'DANGER') danger++;
+            });
+            
+            document.getElementById('count-safe').innerText = safe;
+            document.getElementById('count-danger').innerText = danger;
+
+            // 2. Build the Roster Table
+            if (fullRoster.length > 0) {
+                fullRoster.forEach(student => {
+                    const sid = student.student_id;
+                    const isOnline = studentData.has(sid);
+                    const liveInfo = studentData.get(sid);
+                    
+                    // Connection Badge Logic
+                    const connBadge = isOnline 
+                        ? `<span class="status-pill status-safe" style="background:#dcfce7; color:#166534;">● ONLINE</span>` 
+                        : `<span class="status-pill" style="background:#f1f5f9; color:#64748b;">○ OFFLINE</span>`;
+                    
+                    // Status Condition Logic: Use Live status if online, otherwise use Database status
+                    const currentStatus = isOnline ? liveInfo.status : student.last_status;
+                    let statusBadge = `<span class="status-pill" style="background:#f1f5f9; color:#64748b; font-weight:700;">--</span>`;
+                    
+                    if (currentStatus === 'SAFE') {
+                        statusBadge = `<span class="status-pill status-safe">SAFE</span>`;
+                    } else if (currentStatus === 'DANGER') {
+                        statusBadge = `<span class="status-pill status-danger">DANGER</span>`;
+                    }
+
+                    // Time Logic: Use Live timestamp if online, otherwise use Database record
+                    const lastSeenDisplay = isOnline ? liveInfo.time : (student.last_seen || "No Record");
+
+                    body.innerHTML += `
+                        <tr>
+                            <td>
+                                <div><strong>${student.name}</strong></div>
+                                <div style="font-size:11px; color:#64748b;">${sid}</div>
+                            </td>
+                            <td>${connBadge}</td>
+                            <td>${statusBadge}</td>
+                            <td style="font-family: monospace; font-size: 0.8rem;">${lastSeenDisplay}</td>
+                        </tr>`;
+                });
+            } else {
+                body.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:20px;">Initialising Roster...</td></tr>`;
+            }
+        }
+
+        function switchTab(t) {
+            // 1. Toggle Content Visibility
+            document.getElementById('tab-map').style.display = t === 'map' ? 'block' : 'none';
+            document.getElementById('tab-logs').style.display = t === 'logs' ? 'block' : 'none';
+            document.getElementById('tab-students').style.display = t === 'students' ? 'block' : 'none';
+
+            // 2. Update Sidebar Active States
+            document.getElementById('nav-live').classList.toggle('active', t === 'map');
+            document.getElementById('nav-logs').classList.toggle('active', t === 'logs');
+            document.getElementById('nav-directory').classList.toggle('active', t === 'students');
+
+            // 3. Fix Map Layout and Fetch Logs if needed
+            if (t === 'map') {
+                setTimeout(() => map.invalidateSize(), 200);
+            } else if (t === 'logs') {
+                fetchDisasterLogs(); // Call your Supabase fetch function here
+            }
+        }
+
+        async function fetchDisasterLogs() {
+            if (!supabaseAdmin) return;
+            const logBody = document.getElementById('disaster-logs-body');
+            
+            const { data, error } = await supabaseAdmin
+                .from('disaster_history') 
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                logBody.innerHTML = `<tr><td colspan="5">Error loading logs</td></tr>`;
+                return;
+            }
+
+            logBody.innerHTML = data.map(log => {
+                const isSafe = log.type === 'SAFE' || log.type === 'CLEAR';
+                return `
+                    <tr>
+                        <td style="font-family: monospace; font-size: 0.8rem;">
+                            ${new Date(log.created_at).toLocaleString()}
+                        </td>
+                        <td><strong>${log.type}</strong></td>
+                        <td>
+                            <span class="clickable-count" style="font-weight: 700; color: var(--success);" 
+                                onclick="viewStatusGroup('SAFE')">
+                                ${log.count_safe || 0}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="clickable-count" style="font-weight: 700; color: var(--danger);" 
+                                onclick="viewStatusGroup('DANGER')">
+                                ${log.count_danger || 0}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="status-pill ${isSafe ? 'status-safe' : 'status-danger'}">
+                                ${isSafe ? 'RESOLVED' : 'ACTIVE'}
+                            </span>
+                        </td>
+                    </tr>`;
+            }).join('');
+        }
+
+        // Helper function to "Jump" to the directory and filter students
+        function viewStatusGroup(status) {
+            // 1. Switch to the student directory tab
+            switchTab('students');
+            
+            // 2. Set the search bar value to the status (SAFE or DANGER)
+            const searchInput = document.getElementById('roster-search');
+            if (searchInput) {
+                searchInput.value = status;
+                
+                // 3. Trigger the filtering logic manually
+                filterRoster();
+            }
+        }
+        function logoutSystem() {
+            if (confirm("Logout?")) location.href = '/logout';
+        }
+
+        function addDisasterLog(disasterType) {
+            const logBody = document.getElementById('disaster-logs-body');
+            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            let statusHTML = `<span class="status-pill status-danger">ACTIVE ALERT</span>`;
+            let displayType = disasterType;
+            if (disasterType === 'SAFE' || disasterType === 'CLEAR') {
+                statusHTML = `<span class="status-pill status-safe">RESOLVED / SAFE</span>`;
+                displayType = "System Reset";
+            }
+            const row = `<tr><td style="font-family: monospace; font-weight: 600;">${time}</td><td><strong>${displayType}</strong></td><td>${statusHTML}</td></tr>`;
+            logBody.insertAdjacentHTML('afterbegin', row);
+        }
+
+        function drawGhostPath(logs) {
+            const pathPoints = logs.filter(l => l.lat && l.lng).map(l => [l.lat, l.lng]);
+            if (pathPoints.length > 0) {
+                L.polyline(pathPoints, { color: '#f59e0b', dashArray: '5, 10', weight: 4, opacity: 0.7 }).addTo(map).bindPopup("Offline Movement History");
+            }
+        }
+
+        function filterRoster() {
+            const query = document.getElementById('roster-search').value.toLowerCase();
+            const rows = document.querySelectorAll('#roster-table-body tr');
+
+            rows.forEach(row => {
+                // Checks the text content of the entire row (Name, ID, and Status Badge)
+                const rowText = row.innerText.toLowerCase();
+                
+                if (rowText.includes(query)) {
+                    row.style.display = "";
+                } else {
+                    row.style.display = "none";
+                }
+            });
+        }
+
+        async function loadSavedMessages() {
+            if (!supabaseAdmin) return;
+            const list = document.getElementById('list-danger');
+
+            if (!list) {
+                console.warn("Element 'list-danger' not found. Skipping message load.");
+                return;
+            }
+            
+            const { data, error } = await supabaseAdmin
+                .from('sos_messages')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(50);
+
+            if (error) return;
+
+            list.innerHTML = '';
+
+            data.forEach(msg => {
+                const item = document.createElement('div');
+                const msgId = `msg-${msg.id}`;
+                const isReplied = msg.replied === true;
+                
+                item.className = 'log-entry urgent-entry';
+                item.style.opacity = isReplied ? '0.8' : '1';
+                item.style.borderBottom = "1px solid #e2e8f0";
+                item.id = msgId;
+
+                const sosBadge = msg.is_critical ? `<span class="sos-tag">CRITICAL SOS</span>` : '';
+                
+                item.innerHTML = `
+                    <div style="margin-bottom:4px; display:flex; justify-content:space-between;">
+                        <span>${sosBadge} <strong>ID: ${msg.student_id}</strong></span>
+                        <small style="color:var(--text-muted); font-size:10px;">${new Date(msg.created_at).toLocaleTimeString()}</small>
+                    </div>
+                    <div style="color:#1e293b;">"${msg.message}"</div>
+                    <button id="btn-${msgId}" 
+                            onclick="${isReplied ? '' : `replyTo('${msg.student_id}', '${msgId}', ${msg.id})`}" 
+                            style="margin-top:10px; background:${isReplied ? 'var(--success)' : '#ef4444'}; border:none; color:white; font-size:10px; font-weight:700; padding:6px 12px; border-radius:4px; cursor:${isReplied ? 'default' : 'pointer'}; transition: 0.3s;"
+                            ${isReplied ? 'disabled' : ''}>
+                        ${isReplied ? '<i class="fas fa-check"></i> REPLY SENT' : 'REPLY TO STUDENT'}
+                    </button>
+                    <hr style="margin-top:12px; border:0; border-top: 1px solid ${isReplied ? '#e2e8f0' : '#fee2e2'};">`;
+                
+                list.appendChild(item);
+            });
+        }
+
+        async function clearSOSMessages() {
+            if (!confirm("Are you sure you want to permanently delete all SOS messages?")) return;
+
+            if (supabaseAdmin) {
+                const { error } = await supabaseAdmin
+                    .from('sos_messages')
+                    .delete()
+                    .neq('id', 0);
+
+                if (error) {
+                    console.error("Error clearing messages:", error.message);
+                    return;
+                }
+                
+                // Use an optional chaining check or ensure the element exists before setting innerHTML
+                const feed = document.getElementById('list-danger');
+                if (feed) {
+                    feed.innerHTML = `
+                        <div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 0.85rem;">
+                            <i class="fas fa-check-circle" style="color: var(--success); display: block; font-size: 1.5rem; margin-bottom: 10px;"></i>
+                            Feed Cleared
+                        </div>`;
+                }
+            }
+        }
+    </script>
+</body>
+</html>
